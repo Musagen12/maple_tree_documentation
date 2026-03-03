@@ -377,6 +377,8 @@ void __mt_destroy(struct maple_tree *mt);
  * Context: Any context.
  * Return: %true if the tree contains only NULL pointers.
  */
+
+// Checks if a tree is empty 
 static inline bool mtree_empty(const struct maple_tree *mt)
 {
 	return mt->ma_root == NULL;
