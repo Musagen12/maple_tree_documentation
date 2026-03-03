@@ -381,6 +381,7 @@ void __mt_destroy(struct maple_tree *mt);
 // Checks if a tree is empty 
 static inline bool mtree_empty(const struct maple_tree *mt)
 {
+	// It works since when a tree is created the root node(ma_root) is always set to NULL
 	return mt->ma_root == NULL;
 }
 
