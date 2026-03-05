@@ -114,7 +114,7 @@ static const unsigned char mt_slots[] = {
 #define mt_slot_count(x) mt_slots[mte_node_type(x)]
 
 static const unsigned char mt_pivots[] = {
-	[maple_dense]		= 0,
+	[maple_dense]		= 0,        // Dense nodes have no pivots
 	[maple_leaf_64]		= MAPLE_RANGE64_SLOTS - 1,
 	[maple_range_64]	= MAPLE_RANGE64_SLOTS - 1,
 	[maple_arange_64]	= MAPLE_ARANGE64_SLOTS - 1,
