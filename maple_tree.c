@@ -105,6 +105,7 @@ static const unsigned long mt_max[] = {
 #define mt_node_max(x) mt_max[mte_node_type(x)]
 #endif
 
+
 static const unsigned char mt_slots[] = {
 	[maple_dense]		= MAPLE_NODE_SLOTS,
 	[maple_leaf_64]		= MAPLE_RANGE64_SLOTS,
