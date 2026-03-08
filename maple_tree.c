@@ -98,6 +98,9 @@
 static struct kmem_cache *maple_node_cache;
 
 #ifdef CONFIG_DEBUG_MAPLE_TREE
+
+// ULONG MAX is the largest value in the kernel(ie infinity)
+// Defines the maximuim values for each node type
 static const unsigned long mt_max[] = {
 	[maple_dense]		= MAPLE_NODE_SLOTS,
 	[maple_leaf_64]		= ULONG_MAX,
@@ -107,15 +110,16 @@ static const unsigned long mt_max[] = {
 #define mt_node_max(x) mt_max[mte_node_type(x)]
 #endif
 
-
+// Defines the array size for slots of the various node types
 static const unsigned char mt_slots[] = {
-	[maple_dense]		= MAPLE_NODE_SLOTS,
+	[maple_dense]		= MAPLE_NODE_SLOTS,  //The reason for using the generic node is because dense nodes don't have pivots
 	[maple_leaf_64]		= MAPLE_RANGE64_SLOTS,
 	[maple_range_64]	= MAPLE_RANGE64_SLOTS,
 	[maple_arange_64]	= MAPLE_ARANGE64_SLOTS,
 };
 #define mt_slot_count(x) mt_slots[mte_node_type(x)]
 
+// Defines the array size for pivots of the various node types
 static const unsigned char mt_pivots[] = {
 	[maple_dense]		= 0,        // Dense nodes have no pivots
 	[maple_leaf_64]		= MAPLE_RANGE64_SLOTS - 1,
@@ -126,26 +130,32 @@ static const unsigned char mt_pivots[] = {
 
 static const unsigned char mt_min_slots[] = {
 	[maple_dense]		= MAPLE_NODE_SLOTS / 2,
+	// The -2 and -1 is there because range nodes store pivots and require slack space during restructuring
 	[maple_leaf_64]		= (MAPLE_RANGE64_SLOTS / 2) - 2,
 	[maple_range_64]	= (MAPLE_RANGE64_SLOTS / 2) - 2,
 	[maple_arange_64]	= (MAPLE_ARANGE64_SLOTS / 2) - 1,
 };
 #define mt_min_slot_count(x) mt_min_slots[mte_node_type(x)]
 
-#define MAPLE_BIG_NODE_SLOTS	(MAPLE_RANGE64_SLOTS * 2 + 2)
-#define MAPLE_BIG_NODE_GAPS	(MAPLE_ARANGE64_SLOTS * 2 + 1)
+// They’re sized to hold two full nodes plus a little extra so the algorithm can combine entries, adjust pivots, and then redistribute safely.
+#define MAPLE_BIG_NODE_SLOTS (MAPLE_RANGE64_SLOTS * 2 + 2)
+#define MAPLE_BIG_NODE_GAPS (MAPLE_ARANGE64_SLOTS * 2 + 1)
 
+// It’s just a buffer to hold entries and pivots while reorganizing (ie merging of nodes)
 struct maple_big_node {
 	unsigned long pivot[MAPLE_BIG_NODE_SLOTS - 1];
 	union {
+		// An array of slots
 		struct maple_enode *slot[MAPLE_BIG_NODE_SLOTS];
+
+		// Tracks gaps
 		struct {
-			unsigned long padding[MAPLE_BIG_NODE_GAPS];
-			unsigned long gap[MAPLE_BIG_NODE_GAPS];
+			unsigned long padding[MAPLE_BIG_NODE_GAPS]; // extra room to simplify indexing during merges
+			unsigned long gap[MAPLE_BIG_NODE_GAPS];    //stores the actual gap metadata
 		};
 	};
-	unsigned char b_end;
-	enum maple_type type;
+	unsigned char b_end; // Tracks the current number of entries in the big node
+	enum maple_type type; // The type of the node
 };
 
 /*
