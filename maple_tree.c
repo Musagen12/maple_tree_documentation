@@ -75,10 +75,12 @@
  *
  * Userland doesn't know about %px so also use %p there.
  */
+
+// Checks if we are in the kernel and debug mode allowing us to see the actuatl pointers
 #if defined(__KERNEL__) && defined(CONFIG_DEBUG_VM_MAPLE_TREE)
 #define PTR_FMT "%px"
 #else
-#define PTR_FMT "%p"
+#define PTR_FMT "%p"  // Its the only option for userland
 #endif
 
 #define MA_ROOT_PARENT 1
@@ -89,7 +91,7 @@
  */
 #define MA_STATE_PREALLOC	1
 
-#define ma_parent_ptr(x) ((struct maple_pnode *)(x))
+#define ma_parent_ptr(x) ((struct maple_pnode *)(x))                     // This converts a raw pointer into a parent-node pointer type(pnode)
 #define mas_tree_parent(x) ((unsigned long)(x->tree) | MA_ROOT_PARENT)
 #define ma_mnode_ptr(x) ((struct maple_node *)(x))
 #define ma_enode_ptr(x) ((struct maple_enode *)(x))
