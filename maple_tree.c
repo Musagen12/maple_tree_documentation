@@ -163,6 +163,20 @@ struct maple_big_node {
  * existing tree in a more atomic way.  Any walkers of the older tree will hit a
  * dead node and restart on updates.
  */
+
+// Maple Tree never mutates the live tree in-place for multi-slot or multi-node changes. Instead:
+
+// 	1. Allocate a temporary workspace (maple_subtree_state).
+
+// 	2. Apply all the non-atomic changes there:
+// 		- Insert new entries
+// 		- Remove old entries
+// 		- Rebalance nodes
+// 		- Adjust pivots
+
+// 	3. Once everything is ready, atomically swap the root pointer of the subtree into the live tree.
+
+
 struct maple_subtree_state {
 	struct ma_state *orig_l;	/* Original left side of subtree */
 	struct ma_state *orig_r;	/* Original right side of subtree */
@@ -181,16 +195,30 @@ struct maple_subtree_state {
 #define noinline_for_kasan inline
 #endif
 
+// "inline" keyword means no external linkage
+
 /* Functions */
+// gfp - Judt flags
+// Allocate a single Maple Tree node
 static inline struct maple_node *mt_alloc_one(gfp_t gfp)
 {
+	// Uses the slab cache maple_node_cache instead of kmalloc for memory allocation. Since its faster and less fragmentation
 	return kmem_cache_alloc(maple_node_cache, gfp);
 }
-
+// Frees multiple nodes simultaneously to avoid repeated frees
 static inline void mt_free_bulk(size_t size, void __rcu **nodes)
 {
 	kmem_cache_free_bulk(maple_node_cache, size, (void **)nodes);
 }
+
+
+
+
+
+
+
+
+
 
 static void mt_return_sheaf(struct slab_sheaf *sheaf)
 {
