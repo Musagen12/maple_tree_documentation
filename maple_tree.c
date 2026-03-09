@@ -76,7 +76,10 @@
  * Userland doesn't know about %px so also use %p there.
  */
 
-// Checks if we are in the kernel and debug mode allowing us to see the actuatl pointers
+// n Linux kernel Kconfig files, the symbol name itself does not include CONFIG_. The CONFIG_ prefix is added later when the configuration is generated.
+
+
+// Checks if we are in the kernel and debug mode allowing us to see the actual pointers
 #if defined(__KERNEL__) && defined(CONFIG_DEBUG_VM_MAPLE_TREE)
 #define PTR_FMT "%px"
 #else
