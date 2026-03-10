@@ -458,10 +458,19 @@ enum maple_status {
  *
  */
 struct ma_state {
-	struct maple_tree *tree;	/* The tree we're operating in */
-	unsigned long index;		/* The index we're operating on - range start */
-	unsigned long last;		/* The last index we're operating on - range end */
-	struct maple_enode *node;	/* The node containing this entry */
+	struct maple_tree *tree;	 // Maple tree being operated on
+
+	// Why start index and last. Because maple trees operate with ranges not indivicual keys
+	unsigned long index;		// Start of the range being operated on
+	unsigned long last;		   // End of the range being operated on
+
+	// The node has encoded metadata(as the type maple_enode(ie encoded_node) indicates) in its low bits ie
+	// bit 0 : if set not a node (root or special location)
+	// bit 1 : error encoded
+	// bit 2 : unallocated slot flag
+	// bit 3-6 : node type
+	struct maple_enode *node;	// This is the current node in the traversal
+
 	unsigned long min;		/* The minimum index of this node - implied pivot min */
 	unsigned long max;		/* The maximum index of this node - implied pivot max */
 	struct slab_sheaf *sheaf;	/* Allocated nodes for this operation */

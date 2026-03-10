@@ -76,8 +76,8 @@
  * Userland doesn't know about %px so also use %p there.
  */
 
-// n Linux kernel Kconfig files, the symbol name itself does not include CONFIG_. The CONFIG_ prefix is added later when the configuration is generated.
-
+// In Linux kernel Kconfig files, the symbol name itself does not include CONFIG_. The CONFIG_ prefix is added later when the configuration is generated.
+// So for CONFIG_DEBUG_VM_MAPLE_TREE look for DEBUG_VM_MAPLE_TREE in the kconfig file
 
 // Checks if we are in the kernel and debug mode allowing us to see the actual pointers
 #if defined(__KERNEL__) && defined(CONFIG_DEBUG_VM_MAPLE_TREE)
@@ -246,6 +246,10 @@ static int mt_refill_sheaf(gfp_t gfp, struct slab_sheaf **sheaf,
  * The maple tree uses the parent pointer to indicate this node is no longer in
  * use and will be freed.
  */
+
+
+// ma_parent_ptr() extracts the actual parent pointer from the encoded value.
+// This checks whether the stored parent pointer matches the expected encoded parent pointer
 static void ma_free_rcu(struct maple_node *node)
 {
 	WARN_ON(node->parent != ma_parent_ptr(node));
