@@ -219,10 +219,6 @@ static inline void mt_free_bulk(size_t size, void __rcu **nodes)
 
 
 
-
-
-
-
 static void mt_return_sheaf(struct slab_sheaf *sheaf)
 {
 	kmem_cache_return_sheaf(maple_node_cache, GFP_NOWAIT, sheaf);

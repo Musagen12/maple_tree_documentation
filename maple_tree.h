@@ -407,14 +407,14 @@ static inline bool mtree_empty(const struct maple_tree *mt)
  * ma_error means there was an error, check the node for the error number.
  */
 enum maple_status {
-	ma_active,
-	ma_start,
-	ma_root,
-	ma_none,
-	ma_pause,
-	ma_overflow,
-	ma_underflow,
-	ma_error,
+	ma_active, // The maple state is pointing to a node and offset and can continue operating on the tree
+	ma_start, // Traversal hasn't started yet
+	ma_root, // The entry lives in the root of the tree
+	ma_none,  // There is no node in the tree for this entry after traversal
+	ma_pause, // State may be stale. Usually happens after RCU retry or tree modification hence the algorithm must restart
+	ma_overflow, // Traversal exceeded upper limit.
+	ma_underflow, // Traversal reached the lower limit.
+	ma_error, // Indaicates that there was an error, check the node for the error number.(in "struct maple_enode *node" below. bit 1)
 };
 
 /*
@@ -457,9 +457,28 @@ enum maple_status {
  * status is ma_overflow, then the last action hit the upper limit.
  *
  */
+
+// The ma_state to ma_wr_state lifecycle
+// =====================================
+// operation starts
+//      ↓
+// initialize ma_state
+//      ↓
+// traverse tree
+//      ↓
+// write required
+//      ↓
+// initialize ma_wr_state
+//      ↓
+// perform structural changes
+
+
+
+
 struct ma_state {
 	struct maple_tree *tree;	 // Maple tree being operated on
 
+	// The whole range for traversal
 	// Why start index and last. Because maple trees operate with ranges not indivicual keys
 	unsigned long index;		// Start of the range being operated on
 	unsigned long last;		   // End of the range being operated on
@@ -471,34 +490,55 @@ struct ma_state {
 	// bit 3-6 : node type
 	struct maple_enode *node;	// This is the current node in the traversal
 
+	// For the current node
+	// Describes the range for the current node in-terms of the pivots
 	unsigned long min;		/* The minimum index of this node - implied pivot min */
 	unsigned long max;		/* The maximum index of this node - implied pivot max */
+
+	// Used during write operations
 	struct slab_sheaf *sheaf;	/* Allocated nodes for this operation */
 	struct maple_node *alloc;	/* A single allocated node for fast path writes */
-	unsigned long node_request;	/* The number of nodes to allocate for this operation */
-	enum maple_status status;	/* The status of the state (active, start, none, etc) */
+	unsigned long node_request;	// Number of nodes needed for the operation
+
+
+	enum maple_status status;	// This tells the algorithm what stage the traversal is in
 	unsigned char depth;		/* depth of tree descent during write */
-	unsigned char offset;
-	unsigned char mas_flags;
+
+	unsigned char offset;  // slot index inside the node
+	unsigned char mas_flags; // Various internal behavior flags that modify traversal behaviour
 	unsigned char end;		/* The end of the node */
-	enum store_type store_type;	/* The type of store needed for this operation */
+	enum store_type store_type;	// The type of write operation
 };
 
+// It extends ma_state for write operations
 struct ma_wr_state {
-	struct ma_state *mas;
-	struct maple_node *node;	/* Decoded mas->node */
+	struct ma_state *mas;  // Points to the main traversal state
+	struct maple_node *node;	// Decoded mas->node(ie removing the encoded bits)
+
+	// These indicate what portion of the node is being written.
+	// They are narrower than ma_state->index/last, because ma_wr_state focuses on the part of the tree actually being modified.
 	unsigned long r_min;		/* range min */
 	unsigned long r_max;		/* range max */
+
+
 	enum maple_type type;		/* mas->node type */
 	unsigned char offset_end;	/* The offset where the write ends */
 	unsigned long *pivots;		/* mas->node->pivots pointer */
 	unsigned long end_piv;		/* The pivot at the offset end */
 	void __rcu **slots;		/* mas->node->slots pointer */
-	void *entry;			/* The entry to write */
-	void *content;			/* The existing entry that is being overwritten */
+
+	void *entry;			// The new value being stored
+	void *content;			// The old value
+
 	unsigned char vacant_height;	/* Height of lowest node with free space */
 	unsigned char sufficient_height;/* Height of lowest node with min sufficiency + 1 nodes */
 };
+
+// ma_state
+//    = "Where I am in the tree + operation context"
+
+// ma_wr_state
+//    = "Exactly how to perform a write in this node"
 
 #define mas_lock(mas)           spin_lock(&((mas)->tree->ma_lock))
 #define mas_lock_nested(mas, subclass) \
@@ -511,8 +551,11 @@ struct ma_wr_state {
  * to resolve the error, the walk would have to be restarted from the
  * top of the tree as the tree may have been modified.
  */
+
+// MA_ERROR(err) encodes a negative errno into a fake maple_enode pointer by shifting it left two bits and setting the "error flag" bit.
+// Since 2 in binary is 00000010 hence the error bit(bit 1 assuming we start with 0) is set 
 #define MA_ERROR(err) \
-		((struct maple_enode *)(((unsigned long)err << 2) | 2UL))
+		((struct maple_enode *)(((unsigned long)err << 2) | 2UL))  // The | (bitwise OR) forces the second bit (bit 1) to become 1, regardless of its previous state
 
 /*
  * When changing MA_STATE, remember to also change rust/kernel/maple_tree.rs
@@ -585,7 +628,7 @@ int mas_empty_area_rev(struct ma_state *mas, unsigned long min,
 static inline void mas_init(struct ma_state *mas, struct maple_tree *tree,
 			    unsigned long addr)
 {
-	memset(mas, 0, sizeof(struct ma_state));
+	memset(mas, 0, sizeof(struct ma_state));  // A clean up step that ensure everything is set to 0
 	mas->tree = tree;
 	mas->index = mas->last = addr;
 	mas->max = ULONG_MAX;
