@@ -94,7 +94,7 @@
  */
 #define MA_STATE_PREALLOC	1
 
-#define ma_parent_ptr(x) ((struct maple_pnode *)(x))                     // This converts a raw pointer into a parent-node pointer type(pnode)
+#define ma_parent_ptr(x) ((struct maple_pnode *)(x))                     // This converts a raw pointer into a parent-node pointer type(pnode) ie type casting(it only modifies the type not the value)
 #define mas_tree_parent(x) ((unsigned long)(x->tree) | MA_ROOT_PARENT)
 #define ma_mnode_ptr(x) ((struct maple_node *)(x))
 #define ma_enode_ptr(x) ((struct maple_enode *)(x))
@@ -200,6 +200,11 @@ struct maple_subtree_state {
 
 // "inline" keyword means no external linkage
 
+
+// In C, a static inline function is a function that has internal linkage (visible only within the current translation unit or file)
+// and serves as a hint to the compiler to perform inline expansion (substitute the function body directly at the point of call instead of a JUMP operation)
+
+
 /* Functions */
 // gfp - Judt flags
 // Allocate a single Maple Tree node
@@ -245,28 +250,45 @@ static int mt_refill_sheaf(gfp_t gfp, struct slab_sheaf **sheaf,
 
 
 // ma_parent_ptr() extracts the actual parent pointer from the encoded value.
-// This checks whether the stored parent pointer matches the expected encoded parent pointer
 static void ma_free_rcu(struct maple_node *node)
 {
+	// It verifies that casting the pointer does not change the value
 	WARN_ON(node->parent != ma_parent_ptr(node));
 	kfree_rcu(node, rcu);
 }
 
+// This function sets the height of the maple tree in the ma_flags field of the tree.
+// The height is not stored in a dedicated field; it’s encoded in ma_flags.
 static void mt_set_height(struct maple_tree *mt, unsigned char height)
 {
+	// Copy ma_flags into a local variable so we can modify it safely
 	unsigned int new_flags = mt->ma_flags;
 
+	// MT_FLAGS_HEIGHT_MASK defines which bits in ma_flags store the height.
+	// ~MT_FLAGS_HEIGHT_MASK flips the bits, so &= clears the height portion while leaving other bits intact(explained better in my note book)
 	new_flags &= ~MT_FLAGS_HEIGHT_MASK;
+
+	// Ensures the height is within the allowed maximum.
+	// If the check fails, a warning or kernel panic may be triggered
 	MT_BUG_ON(mt, height > MAPLE_HEIGHT_MAX);
+
+	// We shift MT_FLAGS_HEIGHT_OFFSET(ie 2) positions to get to the height bits then OR the height value and the bits which were previously set to 0.
+	// This ensures that the height values are basically copied into new_flags
 	new_flags |= height << MT_FLAGS_HEIGHT_OFFSET;
+
+	// We return the updated flags
 	mt->ma_flags = new_flags;
 }
 
+
+// Gets the height of the tree
 static unsigned int mas_mt_height(struct ma_state *mas)
 {
 	return mt_height(mas->tree);
 }
 
+
+// Getting the maple tree flags whilst ignoring the height
 static inline unsigned int mt_attr(struct maple_tree *mt)
 {
 	return mt->ma_flags & ~MT_FLAGS_HEIGHT_MASK;

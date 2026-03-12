@@ -135,7 +135,7 @@ struct maple_topiary {
 
 // The various node types
 enum maple_type {
-	maple_dense,
+	maple_dense,  // They have no pivots
 	maple_leaf_64,
 	maple_range_64,
 	maple_arange_64,
@@ -149,7 +149,7 @@ enum store_type {
 	wr_exact_fit,  // direct replacement
 	wr_spanning_store, // When the range to be inserted goes beyond a single node
 	wr_split_store, // Node splitting
-	wr_rebalance, // Occures when a node has a more than n/2 slots empty(where n is the number of children/slots)
+	wr_rebalance, // Occures when a node has slots that are below the allowed minimum as defined in the code
 	wr_append,
 	wr_node_store,
 	wr_slot_store,
@@ -181,7 +181,7 @@ enum store_type {
  * * MT_FLAGS_LOCK_BH		- Acquired bh-safe
  * * MT_FLAGS_LOCK_EXTERN	- mt_lock is not used
  *
- * MAPLE_HEIGHT_MAX	The largest height that can be stored
+ * * MAPLE_HEIGHT_MAX	The largest height that can be stored
  */
 #define MT_FLAGS_ALLOC_RANGE	0x01    // Tells us if a tree is an allocation tree or a range tree
 #define MT_FLAGS_USE_RCU	0x02       
@@ -948,6 +948,7 @@ static inline void mt_set_in_rcu(struct maple_tree *mt)
 	}
 }
 
+// This retains the height values but zero's the rest of ma_flags. Then shifts by 2 steps to get the actual height
 static inline unsigned int mt_height(const struct maple_tree *mt)
 {
 	return (mt->ma_flags & MT_FLAGS_HEIGHT_MASK) >> MT_FLAGS_HEIGHT_OFFSET;
