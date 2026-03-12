@@ -303,18 +303,8 @@ static __always_inline enum maple_type mte_node_type(
 		MAPLE_NODE_TYPE_MASK;
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
+// We are comparing based on the order in the maple_type enum where each type corresponds to a number from 0 hence the reason why we can use the less than operator
+// since we are comparing numbers. This is true for the following function
 static __always_inline bool ma_is_dense(const enum maple_type type)
 {
 	return type < maple_leaf_64;
@@ -324,6 +314,10 @@ static __always_inline bool ma_is_leaf(const enum maple_type type)
 {
 	return type < maple_range_64;
 }
+
+
+
+
 
 static __always_inline bool mte_is_leaf(const struct maple_enode *entry)
 {
