@@ -294,12 +294,26 @@ static inline unsigned int mt_attr(struct maple_tree *mt)
 	return mt->ma_flags & ~MT_FLAGS_HEIGHT_MASK;
 }
 
+
+// Gets the type from an encoded node's pointer
 static __always_inline enum maple_type mte_node_type(
 		const struct maple_enode *entry)
 {
 	return ((unsigned long)entry >> MAPLE_NODE_TYPE_SHIFT) &
 		MAPLE_NODE_TYPE_MASK;
 }
+
+
+
+
+
+
+
+
+
+
+
+
 
 static __always_inline bool ma_is_dense(const enum maple_type type)
 {
