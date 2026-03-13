@@ -295,7 +295,7 @@ static inline unsigned int mt_attr(struct maple_tree *mt)
 }
 
 
-// Gets the type from an encoded node's pointer
+// Gets the type from an encoded node's pointer(ie the maple type)
 static __always_inline enum maple_type mte_node_type(
 		const struct maple_enode *entry)
 {
@@ -310,6 +310,7 @@ static __always_inline bool ma_is_dense(const enum maple_type type)
 	return type < maple_leaf_64;
 }
 
+// maple_dense, maple_leaf_64 can be leaf nodes
 static __always_inline bool ma_is_leaf(const enum maple_type type)
 {
 	return type < maple_range_64;
