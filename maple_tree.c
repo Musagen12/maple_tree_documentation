@@ -414,6 +414,8 @@ static inline struct maple_topiary *mte_to_mat(const struct maple_enode *entry)
  *
  * Return: the maple node (not encoded - bare pointer).
  */
+
+// Converts the encoded node in ma_state into a regilar node
 static inline struct maple_node *mas_mn(const struct ma_state *mas)
 {
 	return mte_to_node(mas->node);
@@ -423,11 +425,17 @@ static inline struct maple_node *mas_mn(const struct ma_state *mas)
  * mte_set_node_dead() - Set a maple encoded node as dead.
  * @mn: The maple encoded node.
  */
+// Converts encoded node pointer to real node.
+// Sets the node’s parent pointer to itself to mark it as dead.
+// Uses a memory barrier to synchronize updates with RCU readers.
 static inline void mte_set_node_dead(struct maple_enode *mn)
 {
 	mte_to_node(mn)->parent = ma_parent_ptr(mte_to_node(mn));
 	smp_wmb(); /* Needed for RCU */
 }
+
+
+
 
 /* Bit 1 indicates the root is a node */
 #define MAPLE_ROOT_NODE			0x02
