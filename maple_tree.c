@@ -383,8 +383,12 @@ static inline bool mas_is_underflow(struct ma_state *mas)
 }
 
 
-
-
+// Cast pointer to integer
+// We convert the pointer into an integer representation so we can manipulate the bits.
+// Invert the mask by using NOT(ie ~)
+// AND operation clears out the encoded bits stored in the lower part of the pointer.
+// Cast back to pointer converting the cleaned integer back into a pointer to the actual node structure.
+// So the final result is the real address of the node in memory.
 static __always_inline struct maple_node *mte_to_node(
 		const struct maple_enode *entry)
 {
