@@ -343,12 +343,15 @@ static __always_inline bool mt_is_reserved(const void *entry)
 		xa_is_internal(entry);
 }
 
+// The function raises and error by setting the error bit in mas->node using MA_ERROR(), then updating the state
 static __always_inline void mas_set_err(struct ma_state *mas, long err)
 {
 	mas->node = MA_ERROR(err);
 	mas->status = ma_error;
 }
 
+
+// The following functions just verify the mas->status 
 static __always_inline bool mas_is_ptr(const struct ma_state *mas)
 {
 	return mas->status == ma_root;
@@ -378,6 +381,9 @@ static inline bool mas_is_underflow(struct ma_state *mas)
 {
 	return mas->status == ma_underflow;
 }
+
+
+
 
 static __always_inline struct maple_node *mte_to_node(
 		const struct maple_enode *entry)
