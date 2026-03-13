@@ -295,7 +295,15 @@ static inline unsigned int mt_attr(struct maple_tree *mt)
 }
 
 
+// right shifting(ie >>) is meant to unpack values(ie extract values.eg get the height from the maple flags)
+// left shifting(ie <<) is meant to pack values(ie storing values.eg storing the maple type in an encoded pointer)
+
+
 // Gets the type from an encoded node's pointer(ie the maple type)
+
+// Cast the pointer to an integer(Because bitwise operations cannot be performed directly on pointers in C)
+// Shift right. This moves the node type bits down to the lowest positions
+// Apply the mask
 static __always_inline enum maple_type mte_node_type(
 		const struct maple_enode *entry)
 {
@@ -316,10 +324,10 @@ static __always_inline bool ma_is_leaf(const enum maple_type type)
 	return type < maple_range_64;
 }
 
-
-
-
-
+// entry is a maple_enode pointer
+// The pointer is encoded (some low bits store metadata)
+// mte_node_type() extracts the node type bits to get the maple_type enum
+// ma_is_leaf() takes in the maple_type enum and compares it to the definition determining if its a leaf node
 static __always_inline bool mte_is_leaf(const struct maple_enode *entry)
 {
 	return ma_is_leaf(mte_node_type(entry));
