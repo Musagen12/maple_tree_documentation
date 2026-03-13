@@ -401,6 +401,7 @@ static __always_inline struct maple_node *mte_to_node(
  *
  * Return: a maple topiary pointer
  */
+// The same goes here only that its a maple topiary not a maple node
 static inline struct maple_topiary *mte_to_mat(const struct maple_enode *entry)
 {
 	return (struct maple_topiary *)
