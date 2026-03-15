@@ -415,7 +415,7 @@ static inline struct maple_topiary *mte_to_mat(const struct maple_enode *entry)
  * Return: the maple node (not encoded - bare pointer).
  */
 
-// Converts the encoded node in ma_state into a regilar node
+// Converts the encoded node in ma_state into a regular node
 static inline struct maple_node *mas_mn(const struct ma_state *mas)
 {
 	return mte_to_node(mas->node);
@@ -444,9 +444,16 @@ static inline void mte_set_node_dead(struct maple_enode *mn)
 /* Bit 2 means a NULL somewhere below */
 #define MAPLE_ENODE_NULL		0x04
 
+// Takes in a regular node, encodes information and returns the encoded node
 static inline struct maple_enode *mt_mk_node(const struct maple_node *node,
 					     enum maple_type type)
 {
+	// Convert the pointer into an integer so we can insert metadata bits into it
+	// The type is shifted to the left by 3 since maple_type is stored in bit 3-6
+	// The OR operation btwn node and type(after shifting) results in encoding the maple type into the node
+	// To solve this we get all the valies and OR them togethor
+	// MAPLE_ENODE_NULL is 100 in binary, type is shifted by 3 hence they don't collide
+	// The address is converted from an integer to a void pointer nut later the compiler converts it into an enode
 	return (void *)((unsigned long)node |
 			(type << MAPLE_ENODE_TYPE_SHIFT) | MAPLE_ENODE_NULL);
 }
