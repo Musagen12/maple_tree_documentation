@@ -458,11 +458,16 @@ static inline struct maple_enode *mt_mk_node(const struct maple_node *node,
 			(type << MAPLE_ENODE_TYPE_SHIFT) | MAPLE_ENODE_NULL);
 }
 
+// MAPLE_ROOT_NODE is 10 in binary so the OR operation just sets the second bit to 1
+// This identifies if a node is a root
 static inline void *mte_mk_root(const struct maple_enode *node)
 {
 	return (void *)((unsigned long)node | MAPLE_ROOT_NODE);
 }
 
+// The function is used to set the second bit to 0 since ~MAPLE_ROOT_NODE is 01
+// When you AND 1 and 0 its 0
+// It basically removes the root tag making the node regualar
 static inline void *mte_safe_root(const struct maple_enode *node)
 {
 	return (void *)((unsigned long)node & ~MAPLE_ROOT_NODE);
