@@ -502,21 +502,30 @@ static inline bool __maybe_unused mte_has_null(const struct maple_enode *node)
 	return (unsigned long)node & MAPLE_ENODE_NULL;
 }
 
+// The function checks whether a node is Root
+// Remember "The node->parent(parent pointer) of the root node has bit 0" as indicate in the .h file
+// cast parent pointer to integer
+// MA_ROOT_PARENT is 1, so an AND operation returns non-zero as true(bit 0 is set), zero as false(bit 0 isn't set)
 static __always_inline bool ma_is_root(struct maple_node *node)
 {
 	return ((unsigned long)node->parent & MA_ROOT_PARENT);
 }
 
+// Basically converts the encoded node into a regular node first then checks if its a root
 static __always_inline bool mte_is_root(const struct maple_enode *node)
 {
 	return ma_is_root(mte_to_node(node));
 }
 
+// mas->min == 0
+// !0 → true
+// The function checks if the entire range from 0-ULONG_MAX is supported
 static inline bool mas_is_root_limits(const struct ma_state *mas)
 {
 	return !mas->min && mas->max == ULONG_MAX;
 }
 
+// Checks if the maple tree is an allocation tree
 static __always_inline bool mt_is_alloc(struct maple_tree *mt)
 {
 	return (mt->ma_flags & MT_FLAGS_ALLOC_RANGE);

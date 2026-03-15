@@ -34,6 +34,7 @@
 
 #define MAPLE_NODE_MASK		255UL
 
+// We are taling about the node->parent(parent pointer)
 
 /*
  * The node->parent(parent pointer) of the root node has bit 0 set and the rest of the pointer
