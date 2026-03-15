@@ -581,16 +581,17 @@ static __always_inline bool mt_is_alloc(struct maple_tree *mt)
 
 static inline unsigned long mte_parent_shift(unsigned long parent)
 {
-	// basically checks if the second bit(ie bit 1) is set or not
-	// If bit 1 is set (1) → parent uses standard slot shift
-	// If bit 1 is clear (0) → parent uses 16B slot shift
-
 	/* Note bit 1 == 0 means 16B */
 	// 0b?00 : 16 bit values, type in 0-1, slot in 2-7
 	// 0b010 : 32 bit values, type in 0-2, slot in 3-7
 	// 0b110 : 64 bit values, type in 0-2, slot in 3-7
 
 	// As the comments above show only 16 bit has bit 1 set to 0
+
+	// basically checks if the second bit(ie bit 1) is set or not
+	// If bit 1 is set (1) → parent uses standard slot shift
+	// If bit 1 is clear (0) → parent uses 16B slot shift
+	
 	if (likely(parent & MAPLE_PARENT_NOT_RANGE16))
 		return MAPLE_PARENT_SLOT_SHIFT;
 
