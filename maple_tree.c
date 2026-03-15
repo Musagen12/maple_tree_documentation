@@ -442,7 +442,8 @@ static inline void mte_set_node_dead(struct maple_enode *mn)
 /* maple_type stored bit 3-6 */
 #define MAPLE_ENODE_TYPE_SHIFT		0x03
 /* Bit 2 means a NULL somewhere below */
-#define MAPLE_ENODE_NULL		0x04
+#define MAPLE_ENODE_NULL		0x04     
+
 
 // Takes in a regular node, encodes information and returns the encoded node
 static inline struct maple_enode *mt_mk_node(const struct maple_node *node,
@@ -473,16 +474,29 @@ static inline void *mte_safe_root(const struct maple_enode *node)
 	return (void *)((unsigned long)node & ~MAPLE_ROOT_NODE);
 }
 
+
+// __maybe_unused is a directive in GCC and other compatible compilers. 
+// Its purpose is to suppress compiler warnings about entities (variables, functions, parameters) that might not be used
+
+
+// The null bit is set to 0
+// It means that "this node is no longer representing a NULL entry"
+// ie node contains entries
 static inline void __maybe_unused *mte_set_full(const struct maple_enode *node)
 {
 	return (void *)((unsigned long)node & ~MAPLE_ENODE_NULL);
 }
 
+// The null bit is set to 1
+// it means "this node represents empty entries"
+// ie node represents empty entries
 static inline void __maybe_unused *mte_clear_full(const struct maple_enode *node)
 {
 	return (void *)((unsigned long)node | MAPLE_ENODE_NULL);
 }
 
+// Its a function the checks whether the NULL flag is set
+// If it is set the result is non-zero(True), if not its zero(False)
 static inline bool __maybe_unused mte_has_null(const struct maple_enode *node)
 {
 	return (unsigned long)node & MAPLE_ENODE_NULL;
