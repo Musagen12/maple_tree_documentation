@@ -601,7 +601,7 @@ static inline unsigned long mte_parent_shift(unsigned long parent)
 static inline unsigned long mte_parent_slot_mask(unsigned long parent)
 {
 	/* Note bit 1 == 0 means 16B */
-		// 0b?00 : 16 bit values, type in 0-1, slot in 2-7
+	// 0b?00 : 16 bit values, type in 0-1, slot in 2-7
 	// 0b010 : 32 bit values, type in 0-2, slot in 3-7
 	// 0b110 : 64 bit values, type in 0-2, slot in 3-7
 
@@ -632,16 +632,27 @@ enum maple_type mas_parent_type(struct ma_state *mas, struct maple_enode *enode)
 {
 	unsigned long p_type;
 
+	// cast the parent pointer to an integer
 	p_type = (unsigned long)mte_to_node(enode)->parent;
+	// Stop if the parent is the root
 	if (WARN_ON(p_type & MAPLE_PARENT_ROOT))
 		return 0;
 
+	// We are zeroing the bits that don't represent the node encoding(We are only remaining with the 8 lower bits)
+	// since MAPLE_NODE_MASK=255UL=11111111. When you AND it with the pointer, the lower 8 bits remain untouched while the rest is zeroed
 	p_type &= MAPLE_NODE_MASK;
+
+	// Here we we NOT the slot_mask then AND, maintaining the last 3 bits for 32 & 64 bit systems and 2 bits for 16 bit systems
 	p_type &= ~mte_parent_slot_mask(p_type);
+
 	switch (p_type) {
 	case MAPLE_PARENT_RANGE64: /* or MAPLE_PARENT_ARANGE64 */
+
+		// Checks if the tree is an allocation tree based on the flags
 		if (mt_is_alloc(mas->tree))
+			// If so its an arange node
 			return maple_arange_64;
+		// If not its a range node
 		return maple_range_64;
 	}
 
