@@ -632,9 +632,9 @@ enum maple_type mas_parent_type(struct ma_state *mas, struct maple_enode *enode)
 {
 	unsigned long p_type;
 
-	// cast the parent pointer to an integer
+	// cast the parent pointer to an integer so we can extract embedded metadata bits
 	p_type = (unsigned long)mte_to_node(enode)->parent;
-	// Stop if the parent is the root
+	// Check if the encoded parent pointer has the ROOT flag set; if so, treat as no valid parent type
 	if (WARN_ON(p_type & MAPLE_PARENT_ROOT))
 		return 0;
 
@@ -643,6 +643,7 @@ enum maple_type mas_parent_type(struct ma_state *mas, struct maple_enode *enode)
 	p_type &= MAPLE_NODE_MASK;
 
 	// Here we we NOT the slot_mask then AND, maintaining the last 3 bits for 32 & 64 bit systems and 2 bits for 16 bit systems
+	// Clear (remove) the slot bits from the encoded metadata, leaving only the parent node type information.	
 	p_type &= ~mte_parent_slot_mask(p_type);
 
 	switch (p_type) {
