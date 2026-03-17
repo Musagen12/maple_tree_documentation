@@ -751,6 +751,7 @@ unsigned int mte_parent_slot(const struct maple_enode *enode)
 static __always_inline
 struct maple_node *mte_parent(const struct maple_enode *enode)
 {
+	// Remove the encoding and return a regular maple_node
 	return (void *)((unsigned long)
 			(mte_to_node(enode)->parent) & ~MAPLE_NODE_MASK);
 }
@@ -761,6 +762,8 @@ struct maple_node *mte_parent(const struct maple_enode *enode)
  *
  * Return: true if dead, false otherwise.
  */
+
+// The check works since dead nodes have the parent pointer point to themselves
 static __always_inline bool ma_dead_node(const struct maple_node *node)
 {
 	struct maple_node *parent;
@@ -777,6 +780,8 @@ static __always_inline bool ma_dead_node(const struct maple_node *node)
  *
  * Return: true if dead, false otherwise.
  */
+
+// Uses the previous function to return a boolean on whether a node is active or dead
 static __always_inline bool mte_dead_node(const struct maple_enode *enode)
 {
 	struct maple_node *node;
@@ -784,6 +789,9 @@ static __always_inline bool mte_dead_node(const struct maple_enode *enode)
 	node = mte_to_node(enode);
 	return ma_dead_node(node);
 }
+
+
+
 
 /*
  * ma_pivots() - Get a pointer to the maple node pivots.
