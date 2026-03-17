@@ -657,6 +657,7 @@ enum maple_type mas_parent_type(struct ma_state *mas, struct maple_enode *enode)
 		return maple_range_64;
 	}
 
+	// Basically means “If the node is not a 64-bit range/arange, I don’t care.”
 	return 0;
 }
 
@@ -670,24 +671,33 @@ enum maple_type mas_parent_type(struct ma_state *mas, struct maple_enode *enode)
  * Slot number is encoded in the enode->parent bit 3-6 or 2-6, depending on the
  * parent type.
  */
+
+// Encodes the parent pointer with metadata
 static inline
 void mas_set_parent(struct ma_state *mas, struct maple_enode *enode,
 		    const struct maple_enode *parent, unsigned char slot)
 {
+	// Type casts the parent into an integer so that we can encode data
 	unsigned long val = (unsigned long)parent;
 	unsigned long shift;
 	unsigned long type;
+	// Gets the maple_type for the parent
 	enum maple_type p_type = mte_node_type(parent);
 
+	// Ensures that maple_dense and maple_leaf_64 cannot become parents
 	MAS_BUG_ON(mas, p_type == maple_dense);
 	MAS_BUG_ON(mas, p_type == maple_leaf_64);
 
+	// Why use the same type for range and arange nodes?
+	// Because the parent pointer encoding does not need to distinguish them. This is done by checking a global flag
 	switch (p_type) {
 	case maple_range_64:
 	case maple_arange_64:
 		shift = MAPLE_PARENT_SLOT_SHIFT;
 		type = MAPLE_PARENT_RANGE64;
 		break;
+
+	// If it’s not a valid parent type, encode nothing meaningful.
 	default:
 	case maple_dense:
 	case maple_leaf_64:
@@ -695,8 +705,13 @@ void mas_set_parent(struct ma_state *mas, struct maple_enode *enode,
 		break;
 	}
 
+	// By carrying out NOT on MAPLE_NODE_MASK then AND the value clears the lower 8 bits of the values ie the metadata
 	val &= ~MAPLE_NODE_MASK; /* Clear all node metadata in parent */
+
+	// Inject new metadata
 	val |= (slot << shift) | type;
+
+	// Store encoded pointer
 	mte_to_node(enode)->parent = ma_parent_ptr(val);
 }
 
@@ -709,8 +724,11 @@ void mas_set_parent(struct ma_state *mas, struct maple_enode *enode,
 static __always_inline
 unsigned int mte_parent_slot(const struct maple_enode *enode)
 {
+	// cast the parent pointer to an integer so we can extract embedded metadata bits
 	unsigned long val = (unsigned long)mte_to_node(enode)->parent;
 
+	// Checks the parent's root flag
+	// The compiler is told that this check is unlikely to pass
 	if (unlikely(val & MA_ROOT_PARENT))
 		return 0;
 
@@ -718,6 +736,9 @@ unsigned int mte_parent_slot(const struct maple_enode *enode)
 	 * Okay to use MAPLE_PARENT_16B_SLOT_MASK as the last bit will be lost
 	 * by shift if the parent shift is MAPLE_PARENT_SLOT_SHIFT
 	 */
+
+	// "(val & MAPLE_PARENT_16B_SLOT_MASK)" - Basically zeros the rest of the bits retaining the slot bits
+	// Then shift the result towards the right based on type inorder to get the final value
 	return (val & MAPLE_PARENT_16B_SLOT_MASK) >> mte_parent_shift(val);
 }
 
