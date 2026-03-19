@@ -861,7 +861,7 @@ static inline unsigned long *ma_gaps(struct maple_node *node,
  * Return: The pivot at @piv within the limit of the @pivots array, @mas->max
  * otherwise.
  */
-// Gets a given pivot from the array of pivots
+// Gets a given pivot from the array of pivots(ie reading)
 static __always_inline unsigned long
 mas_safe_pivot(const struct ma_state *mas, unsigned long *pivots,
 	       unsigned char piv, enum maple_type type)
@@ -887,7 +887,7 @@ mas_safe_min(struct ma_state *mas, unsigned long *pivots, unsigned char offset)
 {
 	if (likely(offset))
 		// Why offset - 1?
-		// Because pivots sit between ranges, not inside them.
+		// Because we are getting the previous pivot then + 1 to get the begginning of the slot
 		return pivots[offset - 1] + 1;
 
 	// When offset == 0, there is no previous pivot
@@ -901,21 +901,29 @@ mas_safe_min(struct ma_state *mas, unsigned long *pivots, unsigned char offset)
  * @piv: The pivot offset
  * @val: The value of the pivot
  */
+
+// Adding a pivot into a node
 static inline void mte_set_pivot(struct maple_enode *mn, unsigned char piv,
 				unsigned long val)
 {
+	//  Convert the encoded node to a regular node
 	struct maple_node *node = mte_to_node(mn);
+	// We get the node type from the encoded node
 	enum maple_type type = mte_node_type(mn);
 
+	// if the pivot offset is greater than the maximum raise an issue
 	BUG_ON(piv >= mt_pivots[type]);
 	switch (type) {
+	// Append for range64 and leaf64
 	case maple_range_64:
 	case maple_leaf_64:
 		node->mr64.pivot[piv] = val;
 		break;
+	// Append for arange64
 	case maple_arange_64:
 		node->ma64.pivot[piv] = val;
 		break;
+	// Rememeber dense node don't have pivots hence break immediately
 	case maple_dense:
 		break;
 	}
@@ -932,11 +940,16 @@ static inline void mte_set_pivot(struct maple_enode *mn, unsigned char piv,
 static inline void __rcu **ma_slots(struct maple_node *mn, enum maple_type mt)
 {
 	switch (mt) {
+	// Corresponds to the maple arange node
 	case maple_arange_64:
 		return mn->ma64.slot;
+
+	// Corresponds to the maple range nodes
 	case maple_range_64:
 	case maple_leaf_64:
 		return mn->mr64.slot;
+
+	// Corresponds to the generic node in the maple node definition("The anonimized struct")
 	case maple_dense:
 		return mn->slot;
 	}

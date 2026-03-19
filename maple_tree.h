@@ -307,6 +307,7 @@ struct maple_tree {
  */
 struct maple_node {
 	union {
+		// A generic node that can be used as the base for the dense node
 		struct {
 			struct maple_pnode *parent;
 			void __rcu *slot[MAPLE_NODE_SLOTS];
