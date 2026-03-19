@@ -832,12 +832,17 @@ static inline unsigned long *ma_pivots(struct maple_node *node,
  *
  * Return: A pointer to the maple node gaps
  */
+
+// Gets the gap(ie empty space) from a node
 static inline unsigned long *ma_gaps(struct maple_node *node,
 				     enum maple_type type)
 {
 	switch (type) {
+	// maple_arange nodes track gaps(because they are in an allocation tree)
 	case maple_arange_64:
 		return node->ma64.gap;
+
+	//  These node types don't track gaps
 	case maple_range_64:
 	case maple_leaf_64:
 	case maple_dense:
@@ -856,10 +861,12 @@ static inline unsigned long *ma_gaps(struct maple_node *node,
  * Return: The pivot at @piv within the limit of the @pivots array, @mas->max
  * otherwise.
  */
+// Gets a given pivot from the array of pivots
 static __always_inline unsigned long
 mas_safe_pivot(const struct ma_state *mas, unsigned long *pivots,
 	       unsigned char piv, enum maple_type type)
 {
+	// If you ask for a pivot that doesn’t exist or the last one, I’ll give you the logical upper bound
 	if (piv >= mt_pivots[type])
 		return mas->max;
 
@@ -880,6 +887,8 @@ mas_safe_min(struct ma_state *mas, unsigned long *pivots, unsigned char offset)
 	if (likely(offset))
 		return pivots[offset - 1] + 1;
 
+	// When offset == 0, there is no previous pivot
+    // So the range starts at the global minimum
 	return mas->min;
 }
 
