@@ -957,12 +957,18 @@ static inline void __rcu **ma_slots(struct maple_node *mn, enum maple_type mt)
 	return NULL;
 }
 
+// This function verifies that the Maple Tree is write-locked, 
+// using either the external lock or the internal ma_lock, depending on the configuration.
 static inline bool mt_write_locked(const struct maple_tree *mt)
 {
+	// This is a tenary operator structured as "condition ? expression_if_true : expression_if_false;"
+	// if mt_external_lock is True(The tree is using an external lock), use mt_write_lock_is_held(mt)
+	// if mt_external_lock is False(The tree is using its internal lock), use lockdep_is_held(mt)
 	return mt_external_lock(mt) ? mt_write_lock_is_held(mt) :
 		lockdep_is_held(&mt->ma_lock);
 }
 
+// It checks whether the Maple Tree is locked (in any form)
 static __always_inline bool mt_locked(const struct maple_tree *mt)
 {
 	return mt_external_lock(mt) ? mt_lock_is_held(mt) :
