@@ -990,6 +990,7 @@ static __always_inline void *mt_slot_locked(struct maple_tree *mt,
 	// Dereference the slots while  kernel assumes condition(mt_write_locked) is true
 	return rcu_dereference_protected(slots[offset], mt_write_locked(mt));
 }
+
 /*
  * mas_slot_locked() - Get the slot value when holding the maple tree lock.
  * @mas: The maple state
@@ -998,6 +999,7 @@ static __always_inline void *mt_slot_locked(struct maple_tree *mt,
  *
  * Return: The entry stored in @slots at the @offset.
  */
+// We are just implementing the mt_slot_locked() function since we have a lock
 static __always_inline void *mas_slot_locked(struct ma_state *mas,
 		void __rcu **slots, unsigned char offset)
 {
@@ -1012,11 +1014,18 @@ static __always_inline void *mas_slot_locked(struct ma_state *mas,
  *
  * Return: The entry stored in @slots at the @offset
  */
+//  We are just implementing mt_slot() since we have no locks
 static __always_inline void *mas_slot(struct ma_state *mas, void __rcu **slots,
 		unsigned char offset)
 {
 	return mt_slot(mas->tree, slots, offset);
 }
+
+
+
+
+
+
 
 /*
  * mas_root() - Get the maple tree root.
