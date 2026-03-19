@@ -752,6 +752,7 @@ static __always_inline
 struct maple_node *mte_parent(const struct maple_enode *enode)
 {
 	// Remove the encoding and return a regular maple_node
+	// Now you get the real parent node pointer
 	return (void *)((unsigned long)
 			(mte_to_node(enode)->parent) & ~MAPLE_NODE_MASK);
 }
@@ -786,12 +787,12 @@ static __always_inline bool mte_dead_node(const struct maple_enode *enode)
 {
 	struct maple_node *node;
 
+	// gets the raw pointer to the node(ie maple_enode to maple_node)
 	node = mte_to_node(enode);
+
+	// Returns a boolean on whether the node is dead
 	return ma_dead_node(node);
 }
-
-
-
 
 /*
  * ma_pivots() - Get a pointer to the maple node pivots.
