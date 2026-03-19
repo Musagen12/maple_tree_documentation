@@ -803,15 +803,22 @@ static __always_inline bool mte_dead_node(const struct maple_enode *enode)
  *
  * Return: A pointer to the maple node pivots
  */
+
+// Returns the array of pivots if they exist
 static inline unsigned long *ma_pivots(struct maple_node *node,
 					   enum maple_type type)
 {
 	switch (type) {
+	// Corresponds to maple_arange_64 denoted as ma64 in the node definition
 	case maple_arange_64:
 		return node->ma64.pivot;
+
+	// Both correspond to maple_range_64 denoted as mr64 in the node definition
 	case maple_range_64:
 	case maple_leaf_64:
 		return node->mr64.pivot;
+
+	// Dense nodes have no pivots
 	case maple_dense:
 		return NULL;
 	}
