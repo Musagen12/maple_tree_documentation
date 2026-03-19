@@ -881,10 +881,13 @@ mas_safe_pivot(const struct ma_state *mas, unsigned long *pivots,
  *
  * Return: The minimum range value that is contained in @offset.
  */
+// This function returns the lower bound (start) of the range corresponding to a given offset
 static inline unsigned long
 mas_safe_min(struct ma_state *mas, unsigned long *pivots, unsigned char offset)
 {
 	if (likely(offset))
+		// Why offset - 1?
+		// Because pivots sit between ranges, not inside them.
 		return pivots[offset - 1] + 1;
 
 	// When offset == 0, there is no previous pivot
