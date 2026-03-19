@@ -975,15 +975,19 @@ static __always_inline bool mt_locked(const struct maple_tree *mt)
 		lockdep_is_held(&mt->ma_lock);
 }
 
+
+
 static __always_inline void *mt_slot(const struct maple_tree *mt,
 		void __rcu **slots, unsigned char offset)
 {
+	// Verify the conditions for an rcu_dereference() are met
 	return rcu_dereference_check(slots[offset], mt_locked(mt));
 }
 
 static __always_inline void *mt_slot_locked(struct maple_tree *mt,
 		void __rcu **slots, unsigned char offset)
 {
+	// Dereference the slots while  kernel assumes condition(mt_write_locked) is true
 	return rcu_dereference_protected(slots[offset], mt_write_locked(mt));
 }
 /*
