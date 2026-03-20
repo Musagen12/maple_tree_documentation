@@ -401,7 +401,7 @@ static __always_inline struct maple_node *mte_to_node(
  *
  * Return: a maple topiary pointer
  */
-// We are getting to the beginning of the topiary by getting rid of the encoding
+// We are getting getting rid of the encoding
 static inline struct maple_topiary *mte_to_mat(const struct maple_enode *entry)
 {
 	return (struct maple_topiary *)
@@ -1207,6 +1207,8 @@ static inline void mat_add(struct ma_topiary *mat,
 	mte_to_mat(mat->tail)->next = dead_enode;
 	mat->tail = dead_enode;
 }
+
+
 
 static void mt_free_walk(struct rcu_head *head);
 static void mt_destroy_walk(struct maple_enode *enode, struct maple_tree *mt,
