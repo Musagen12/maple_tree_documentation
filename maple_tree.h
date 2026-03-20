@@ -128,7 +128,7 @@ struct maple_arange_64 {
 	struct maple_metadata meta;
 };
 
-// Links together nodes that are meant to be freed
+// It is a linked list of dead nodes(ie the nodes whose parent pointer is set to themselves)
 struct maple_topiary {
 	struct maple_pnode *parent;
 	struct maple_enode *next; /* Overlaps the pivot */

@@ -401,7 +401,7 @@ static __always_inline struct maple_node *mte_to_node(
  *
  * Return: a maple topiary pointer
  */
-// The same goes here only that its a maple topiary not a maple node
+// We are getting to the beginning of the topiary by getting rid of the encoding
 static inline struct maple_topiary *mte_to_mat(const struct maple_enode *entry)
 {
 	return (struct maple_topiary *)
@@ -1021,12 +1021,6 @@ static __always_inline void *mas_slot(struct ma_state *mas, void __rcu **slots,
 	return mt_slot(mas->tree, slots, offset);
 }
 
-
-
-
-
-
-
 /*
  * mas_root() - Get the maple tree root.
  * @mas: The maple state.
@@ -1198,9 +1192,11 @@ static inline void ma_set_meta_gap(struct maple_node *mn, enum maple_type mt,
  *
  * Add the @dead_enode to the linked list in @mat.
  */
+// Adds a dead node to the end of the maple_topiary 
 static inline void mat_add(struct ma_topiary *mat,
 			   struct maple_enode *dead_enode)
 {
+	// Make the node's parent pointer point to itself
 	mte_set_node_dead(dead_enode);
 	mte_to_mat(dead_enode)->next = NULL;
 	if (!mat->tail) {
