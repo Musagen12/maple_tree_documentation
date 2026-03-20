@@ -1033,15 +1033,21 @@ static __always_inline void *mas_slot(struct ma_state *mas, void __rcu **slots,
  *
  * Return: The pointer to the root of the tree
  */
+
+// The functions return the root of the tree but in different scenarios
 static __always_inline void *mas_root(struct ma_state *mas)
 {
+	// Accesing the pointer to the root of the tree RCU safely
 	return rcu_dereference_check(mas->tree->ma_root, mt_locked(mas->tree));
 }
 
 static inline void *mt_root_locked(struct maple_tree *mt)
 {
+	// requires the write lock to be held
 	return rcu_dereference_protected(mt->ma_root, mt_write_locked(mt));
 }
+
+
 
 /*
  * mas_root_locked() - Get the maple tree root when holding the maple tree lock.
