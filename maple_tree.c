@@ -1169,6 +1169,7 @@ static inline unsigned char ma_meta_end(struct maple_node *mn,
  * ma_meta_gap() - Get the largest gap location of a node from the metadata
  * @mn: The maple node
  */
+// ma_meta_gap() is not meant to be generic — it is a type-specific fast path. for maple_arange_64 nodes
 static inline unsigned char ma_meta_gap(struct maple_node *mn)
 {
 	return mn->ma64.meta.gap;
@@ -1180,6 +1181,7 @@ static inline unsigned char ma_meta_gap(struct maple_node *mn)
  * @mt: The maple node type
  * @offset: The location of the largest gap.
  */
+// Setting the largest gap in the node
 static inline void ma_set_meta_gap(struct maple_node *mn, enum maple_type mt,
 				   unsigned char offset)
 {
