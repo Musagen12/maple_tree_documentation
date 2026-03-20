@@ -1047,8 +1047,6 @@ static inline void *mt_root_locked(struct maple_tree *mt)
 	return rcu_dereference_protected(mt->ma_root, mt_write_locked(mt));
 }
 
-
-
 /*
  * mas_root_locked() - Get the maple tree root when holding the maple tree lock.
  * @mas: The maple state.
@@ -1060,6 +1058,8 @@ static inline void *mas_root_locked(struct ma_state *mas)
 	return mt_root_locked(mas->tree);
 }
 
+
+// Gets the maple_metadata depending on the node type
 static inline struct maple_metadata *ma_meta(struct maple_node *mn,
 					     enum maple_type mt)
 {
@@ -1078,12 +1078,15 @@ static inline struct maple_metadata *ma_meta(struct maple_node *mn,
  * @offset: The offset of the highest sub-gap in this node.
  * @end: The end of the data in this node.
  */
+// Adding/setting metadata
 static inline void ma_set_meta(struct maple_node *mn, enum maple_type mt,
 			       unsigned char offset, unsigned char end)
 {
 	struct maple_metadata *meta = ma_meta(mn, mt);
 
+	// The offset to the largest gap in the node
 	meta->gap = offset;
+	// The end of the node`
 	meta->end = end;
 }
 
@@ -1097,29 +1100,53 @@ static inline void mt_clear_meta(struct maple_tree *mt, struct maple_node *mn,
 				  enum maple_type type)
 {
 	struct maple_metadata *meta;
-	unsigned long *pivots;
-	void __rcu **slots;
+	unsigned long *pivots; // "pivots" contains an array of values denoting the boundaries
+	// They put __rcu on slots but not pivots because:
+		// 	- slots contain pointers that are updated concurrently
+		// 	- pivots are immutable values within an RCU-protected node, Not strictly immutable forever. But never modified in place while visible to readers
+		// 	- RCU is used to protect pointer changes, not stable numeric data
+
+	void __rcu **slots; // slots → pointer to the first element of an array hence the  "**"
 	void *next;
 
 	switch (type) {
 	case maple_range_64:
+		// Gets the pivots
 		pivots = mn->mr64.pivot;
+		// Checking if the last pivot is non-zero. Meaning: “This node is populated enough to possibly need metadata handling”
+		// pivots[MAPLE_RANGE64_SLOTS - 2] - This is the last valid pivot in the logical model
+		// Because there are slots - 1 pivots
+		// unlikely() tells the compiler that “This condition is rare (cold path)”
 		if (unlikely(pivots[MAPLE_RANGE64_SLOTS - 2])) {
-			slots = mn->mr64.slot;
+			slots = mn->mr64.slot; // We get the slots
+
+			// Here we fetch the last slot in the node
 			next = mt_slot_locked(mt, slots,
 					      MAPLE_RANGE64_SLOTS - 1);
+
+
+			// mte_to_node(next)
+			// 	→ checks if next is a node pointer (not a value)
+			// mte_node_type(next)
+			// 	→ checks if that node is of a specific type
 			if (unlikely((mte_to_node(next) &&
 				      mte_node_type(next))))
+				// If the last slot contains a node pointer(returns True), then this node does not use metadata hence skip metadata clearing 
 				return; /* no metadata, could be node */
 		}
+		// "fallthrough" occurs when a switch case finishes executing its statements and continues directly into the next case's statements since there was no break or return
+		// Basically if the checks pass just use the next case
 		fallthrough;
+	// maple_arange_64  always has metadata
 	case maple_arange_64:
+		// If the previous maple_range_64 checks pass just use this scenario since metadata handling is the same across the board
 		meta = ma_meta(mn, type);
 		break;
 	default:
 		return;
 	}
 
+	// Actual clearing of the metadata
 	meta->gap = 0;
 	meta->end = 0;
 }
@@ -1129,6 +1156,7 @@ static inline void mt_clear_meta(struct maple_tree *mt, struct maple_node *mn,
  * @mn: The maple node
  * @mt: The maple node type
  */
+// Getting the end of the node from the maple_metadata
 static inline unsigned char ma_meta_end(struct maple_node *mn,
 					enum maple_type mt)
 {
