@@ -902,6 +902,7 @@ static inline void mt_init(struct maple_tree *mt)
 	mt_init_flags(mt, 0);
 }
 
+// Checks whether the MT_FLAGS_USE_RCU is set meaning that the maple tree is in rcu
 static inline bool mt_in_rcu(struct maple_tree *mt)
 {
 #ifdef CONFIG_MAPLE_RCU_DISABLED

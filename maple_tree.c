@@ -1194,6 +1194,11 @@ static inline void ma_set_meta_gap(struct maple_node *mn, enum maple_type mt,
  *
  * Add the @dead_enode to the linked list in @mat.
  */
+
+// The maple_topiary is allocated per dead node. After a node “dies”, its memory is reinterpreted as a maple_topiary, 
+// which provides a next pointer so it can be linked into the ma_topiary list(ie the maple_topiary acts as a linked list element)
+
+
 // Adds a dead node to the end of the maple_topiary 
 static inline void mat_add(struct ma_topiary *mat,
 			   struct maple_enode *dead_enode)
@@ -1202,18 +1207,22 @@ static inline void mat_add(struct ma_topiary *mat,
 	mte_set_node_dead(dead_enode);
 	// We typecast the dead encoded node to a maple_topiary where we can access next which is then set to NULL
 	mte_to_mat(dead_enode)->next = NULL;
+	// Basically checks if the ma_topiary linked list is empty. If so the dead_node is set as the head and tail 
 	if (!mat->tail) {
 		mat->tail = mat->head = dead_enode;
 		return;
 	}
 
+	// If the list is non_empty set the dead_node as the next node with respect to the current tail node
 	mte_to_mat(mat->tail)->next = dead_enode;
+	// Then set the tail to be the dead_node also since its the last node in the linked list
 	mat->tail = dead_enode;
 }
 
 
-
+// RCU safe
 static void mt_free_walk(struct rcu_head *head);
+// RCU unsafe
 static void mt_destroy_walk(struct maple_enode *enode, struct maple_tree *mt,
 			    bool free);
 /*
@@ -1223,17 +1232,26 @@ static void mt_destroy_walk(struct maple_enode *enode, struct maple_tree *mt,
  *
  * Destroy walk a dead list.
  */
+// The function walks the topiary list of dead nodes and frees them safely (RCU-aware).
 static void mas_mat_destroy(struct ma_state *mas, struct ma_topiary *mat)
 {
+	// Just plain old definitions
 	struct maple_enode *next;
 	struct maple_node *node;
+	// Verifies wheteher the maple tree is in rcu mode
 	bool in_rcu = mt_in_rcu(mas->tree);
 
+	// Looping through an ma_topiary
 	while (mat->head) {
+		// Get the next node with respect to the current node(ie the head)
 		next = mte_to_mat(mat->head)->next;
+		// converts the encoded node(head) into a regular node
 		node = mte_to_node(mat->head);
+		// Walk and destroy everything under this node if the tree isn't in rcu mode
 		mt_destroy_walk(mat->head, mas->tree, !in_rcu);
+		// if the tree is in rcu mode
 		if (in_rcu)
+			// It means “Free this node later, when it’s safe”
 			call_rcu(&node->rcu, mt_free_walk);
 		mat->head = next;
 	}
