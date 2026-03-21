@@ -417,7 +417,7 @@ static inline struct maple_topiary *mte_to_mat(const struct maple_enode *entry)
  * Return: the maple node (not encoded - bare pointer).
  */
 
-// Converts the encoded node in ma_state into a regular node
+// Converts the encoded node in ma_state into a regular node using the previously defined function mte_to_node()
 static inline struct maple_node *mas_mn(const struct ma_state *mas)
 {
 	return mte_to_node(mas->node);
