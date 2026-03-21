@@ -1270,16 +1270,27 @@ static inline void mas_descend(struct ma_state *mas)
 	enum maple_type type;
 	unsigned long *pivots;
 	struct maple_node *node;
+	// ** because its a pointer to the begging of an array storing pointers
 	void __rcu **slots;
 
+	// Takes the maple_state gets the enode and converts it into a node
 	node = mas_mn(mas);
+	// Gets the type opf the enode
 	type = mte_node_type(mas->node);
+	// Gets the pointer to the begging of the array of pivots
 	pivots = ma_pivots(node, type);
+	// Gets the pointer to the begging of the array of slots
 	slots = ma_slots(node, type);
 
+	// If the offset isn't 0
 	if (mas->offset)
+		// "mas->offset - 1" gets the upper bound of the prvious slot.
+		// Then 1 is added inorder to get to the beggining of the slot(ie its impled minimum)
 		mas->min = pivots[mas->offset - 1] + 1;
+
+	// We get the upper bound
 	mas->max = mas_safe_pivot(mas, pivots, mas->offset, type);
+	// performs an rcu_dereference_check() to get the slots
 	mas->node = mas_slot(mas, slots, mas->offset);
 }
 
