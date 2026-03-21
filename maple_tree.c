@@ -1242,6 +1242,7 @@ static void mas_mat_destroy(struct ma_state *mas, struct ma_topiary *mat)
 	bool in_rcu = mt_in_rcu(mas->tree);
 
 	// Looping through an ma_topiary
+	// This foes on until we get a NULL
 	while (mat->head) {
 		// Get the next node with respect to the current node(ie the head)
 		next = mte_to_mat(mat->head)->next;
@@ -1253,6 +1254,8 @@ static void mas_mat_destroy(struct ma_state *mas, struct ma_topiary *mat)
 		if (in_rcu)
 			// It means “Free this node later, when it’s safe”
 			call_rcu(&node->rcu, mt_free_walk);
+
+		// Make the next node we had earlier defined become the head
 		mat->head = next;
 	}
 }
