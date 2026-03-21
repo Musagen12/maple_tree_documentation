@@ -404,6 +404,8 @@ static __always_inline struct maple_node *mte_to_node(
 // We are getting getting rid of the encoding
 static inline struct maple_topiary *mte_to_mat(const struct maple_enode *entry)
 {
+	// clears the tag bits (low bits used for encoding)
+	// Typecasts the cleaned pointer so we can access fields like "next"
 	return (struct maple_topiary *)
 		((unsigned long)entry & ~MAPLE_NODE_MASK);
 }
@@ -1198,6 +1200,7 @@ static inline void mat_add(struct ma_topiary *mat,
 {
 	// Make the node's parent pointer point to itself
 	mte_set_node_dead(dead_enode);
+	// We typecast the dead encoded node to a maple_topiary where we can access next which is then set to NULL
 	mte_to_mat(dead_enode)->next = NULL;
 	if (!mat->tail) {
 		mat->tail = mat->head = dead_enode;
