@@ -1315,18 +1315,29 @@ static int mas_ascend(struct ma_state *mas)
 	unsigned long *pivots;
 	bool set_max = false, set_min = false;
 
+	// Convert mas->node(enode) to a regular node
 	a_node = mas_mn(mas);
+
+	// Check if the node is a root node
 	if (ma_is_root(a_node)) {
+		// If so set the offset to 0
 		mas->offset = 0;
+		// Exit since we have reached the top of the tree
 		return 0;
 	}
 
+	// Get the parent pointer
 	p_node = mte_parent(mas->node);
+	// Verify if the parent pointer is equal to the node pointer.
 	if (unlikely(a_node == p_node))
+		// If so return 1 since its a dead node
 		return 1;
 
+	// Returns the maple type for the parent
 	a_type = mas_parent_type(mas, mas->node);
+	// Reveals the slot where the node is stored
 	mas->offset = mte_parent_slot(mas->node);
+	// Encode the data into the node
 	a_enode = mt_mk_node(p_node, a_type);
 
 	/* Check to make sure all parent information is still accurate */
