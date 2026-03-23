@@ -1312,9 +1312,9 @@ static inline void mas_descend(struct ma_state *mas)
 static int mas_ascend(struct ma_state *mas)
 {
 	struct maple_enode *p_enode; /* parent enode. */
+	struct maple_node *p_node; /* parent node. */
 	struct maple_enode *a_enode; /* ancestor enode. */
 	struct maple_node *a_node; /* ancestor node. */
-	struct maple_node *p_node; /* parent node. */
 	unsigned char a_slot;
 	enum maple_type a_type;
 	unsigned long min, max;
@@ -1343,10 +1343,10 @@ static int mas_ascend(struct ma_state *mas)
 	a_type = mas_parent_type(mas, mas->node);
 	// Returns the slot in the parent node where node resides
 	mas->offset = mte_parent_slot(mas->node);
-	// Encode the maple_type into the parent
+	// Encode the maple_type and the parent node into the ancestor node
 	a_enode = mt_mk_node(p_node, a_type);
 
-	/* Check to make sure all parent information is still accurate */
+	 // Check to make sure all parent information is still accurate since other cpu's might have modified it
 	if (p_node != mte_parent(mas->node))
 		return 1;
 
@@ -1370,49 +1370,60 @@ static int mas_ascend(struct ma_state *mas)
 	 * implied pivot min.
 	 */
 
-	// mas->min is the lower bound of the current traversal state — i.e., the minimum value that the current node (or slot) is allowed to represent
-
 	// Executes if mas->offset is 0(ie the child node is located in the first slot of the parent)
 	if (!mas->offset) {
-		// if so set the min to the parent's min. (ie mas->min is the parent's node minimum since it is the smallest value within that context)
+		// if we are in slot[0], the minimum is set to the node's current minimum(ie mas->min) since it is the parent node's minimum
 		min = mas->min;
 		set_min = true;
 	}
 
-	// if the mas->max is ULONG_MAX set "set_max" to true
+	// ULONG_MAX is the largest a value can be in the linux kernel
 	if (mas->max == ULONG_MAX)
 		set_max = true;
 
+	// The loop navigates upwards within the tree using parent pointers
+	// a_enode(ie the ancestor node) tracks the parent nodes of the current node until we get to the root
+	// each iteration shifts a_enode into p_enode, then updates a_enode to represent the parent of the previous node, effectively walking up the tree step-by-step.
 	do {
-		// The parent node t
+		// The parent node is set to the ancestor node(it initially contains the encoded parent node)
 		p_enode = a_enode;
+		// We get the maple_type for the parent node of p_enode
 		a_type = mas_parent_type(mas, p_enode);
+		// Get the parent of p_enode
 		a_node = mte_parent(p_enode);
+		// Get the slot that p_enode is located in the parent
 		a_slot = mte_parent_slot(p_enode);
 		a_enode = mt_mk_node(a_node, a_type);
 		pivots = ma_pivots(a_node, a_type);
 
+		// They are 2 due to defensive programming meant
 		if (unlikely(ma_dead_node(a_node)))
 			return 1;
 
+		// If we haven’t found a minimum yet, and we are not in the first slot
 		if (!set_min && a_slot) {
 			set_min = true;
 			min = pivots[a_slot - 1] + 1;
 		}
 
+		// If we haven’t found a maximum yet, and we are not in the last slot
 		if (!set_max && a_slot < mt_pivots[a_type]) {
 			set_max = true;
 			max = pivots[a_slot];
 		}
 
+		// error in the event the node is dead
 		if (unlikely(ma_dead_node(a_node)))
 			return 1;
 
+		// Checks if a_node(the node to be operated on next) is a root node which is unlikely
 		if (unlikely(ma_is_root(a_node)))
+			// "break" terminates the if statement and the loop 
 			break;
 
-	} while (!set_min || !set_max);
+	} while (!set_min || !set_max);    // continue untill set_min & set_max are set
 
+	// Update with the current valies
 	mas->max = max;
 	mas->min = min;
 	return 0;
