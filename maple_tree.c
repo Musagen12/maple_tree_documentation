@@ -1273,9 +1273,9 @@ static inline void mas_descend(struct ma_state *mas)
 	// ** because its a pointer to the begging of an array storing pointers
 	void __rcu **slots;
 
-	// Takes the maple_state gets the enode and converts it into a node
+	// Takes the ma_state gets the enode and converts it into a node
 	node = mas_mn(mas);
-	// Gets the type opf the enode
+	// Gets the maple_type of the enode
 	type = mte_node_type(mas->node);
 	// Gets the pointer to the begging of the array of pivots
 	pivots = ma_pivots(node, type);
@@ -1288,9 +1288,11 @@ static inline void mas_descend(struct ma_state *mas)
 		// Then 1 is added inorder to get to the beggining of the slot(ie its impled minimum)
 		mas->min = pivots[mas->offset - 1] + 1;
 
-	// We get the upper bound
+	// if offset is 0 then mas->min = 0
+
+	// We get the upper bound by using mas->offset as the pivot index to be used. This gets the upper bound of the slot
 	mas->max = mas_safe_pivot(mas, pivots, mas->offset, type);
-	// performs an rcu_dereference_check() to get the slots
+	// performs an rcu_dereference_check() to get the contents of the slot(ie pointer to the corresponding child node)
 	mas->node = mas_slot(mas, slots, mas->offset);
 }
 
@@ -1326,7 +1328,7 @@ static int mas_ascend(struct ma_state *mas)
 	if (ma_is_root(a_node)) {
 		// If so set the offset to 0
 		mas->offset = 0;
-		// Exit since we have reached the top of the tree
+		// Exit since we have reached the top of the tree(ie root has no parents)
 		return 0;
 	}
 
@@ -1339,23 +1341,26 @@ static int mas_ascend(struct ma_state *mas)
 
 	// Returns the maple type for the parent
 	a_type = mas_parent_type(mas, mas->node);
-	// Reveals the slot where the node is stored
+	// Returns the slot in the parent node where node resides
 	mas->offset = mte_parent_slot(mas->node);
-	// Encode the data into the node
+	// Encode the maple_type into the parent
 	a_enode = mt_mk_node(p_node, a_type);
 
 	/* Check to make sure all parent information is still accurate */
 	if (p_node != mte_parent(mas->node))
 		return 1;
 
+	// Replace the mas->node with the new encoded node
 	mas->node = a_enode;
 
+	// Checks if the parent node is root
 	if (mte_is_root(a_enode)) {
 		mas->max = ULONG_MAX;
 		mas->min = 0;
 		return 0;
 	}
 
+	// We start with the widest range
 	min = 0;
 	max = ULONG_MAX;
 
@@ -1364,15 +1369,22 @@ static int mas_ascend(struct ma_state *mas)
 	 * mas->offset > 0 implies that we need to walk up to find the
 	 * implied pivot min.
 	 */
+
+	// mas->min is the lower bound of the current traversal state — i.e., the minimum value that the current node (or slot) is allowed to represent
+
+	// Executes if mas->offset is 0(ie the child node is located in the first slot of the parent)
 	if (!mas->offset) {
+		// if so set the min to the parent's min. (ie mas->min is the parent's node minimum since it is the smallest value within that context)
 		min = mas->min;
 		set_min = true;
 	}
 
+	// if the mas->max is ULONG_MAX set "set_max" to true
 	if (mas->max == ULONG_MAX)
 		set_max = true;
 
 	do {
+		// The parent node t
 		p_enode = a_enode;
 		a_type = mas_parent_type(mas, p_enode);
 		a_node = mte_parent(p_enode);
