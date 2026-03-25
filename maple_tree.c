@@ -1324,11 +1324,17 @@ static int mas_ascend(struct ma_state *mas)
 	// Convert mas->node(enode) to a regular node
 	a_node = mas_mn(mas);
 
+	// Why not set min and max in this first root check
+   	// =====================================================
+	// mas->node is still the root, meaning mas was already pointing at the root before mas_ascend() was even called.
+	// So mas->min and mas->max should already be correct from whenever the state was last updated. 
+	// There's no need to reset them — we didn't go anywhere.
+
 	// Check if the node is a root node
 	if (ma_is_root(a_node)) {
-		// If so set the offset to 0
+		// If so set the offset to 0 since the root has no parents hence no corresponding slot that holds it which mas->offset denotes
+		// This eliminates the offset's usefulness
 		mas->offset = 0;
-		// Exit since we have reached the top of the tree(ie root has no parents)
 		return 0;
 	}
 
@@ -1353,8 +1359,16 @@ static int mas_ascend(struct ma_state *mas)
 	// Replace the mas->node with the new encoded node
 	mas->node = a_enode;
 
+	// The check came after the ascent(ie we are checking the initial node's parent)
 	// Checks if the parent node is root
+
+	// The second check is an early exit optimization — if we just landed on the root, skip the entire ancestor walking loop since the range is already known.
+	// Without it the loop would still run and arrive at the same answer, just with unnecessary work.
 	if (mte_is_root(a_enode)) {
+		// Because the root by definition owns the entire key range of the tree.
+		// There are no ancestors above it that could constrain its boundaries, so:
+			// min = 0 — nothing to the left
+			// max = ULONG_MAX — nothing to the right
 		mas->max = ULONG_MAX;
 		mas->min = 0;
 		return 0;
@@ -1377,7 +1391,7 @@ static int mas_ascend(struct ma_state *mas)
 		set_min = true;
 	}
 
-	// ULONG_MAX is the largest a value can be in the linux kernel
+	// ULONG_MAX is the largest a value can be in the linux kernel so if its set that is the max for the whole tree
 	if (mas->max == ULONG_MAX)
 		set_max = true;
 
