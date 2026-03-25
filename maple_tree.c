@@ -1296,10 +1296,6 @@ static inline void mas_descend(struct ma_state *mas)
 	mas->node = mas_slot(mas, slots, mas->offset);
 }
 
-
-
-
-
 /*
  * mas_ascend() - Walk up a level of the tree.
  * @mas: The maple state
