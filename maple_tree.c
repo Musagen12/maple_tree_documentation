@@ -2944,6 +2944,8 @@ static inline void *mtree_range_walk(struct ma_state *mas)
 
 	// Traversal loop
 	do {
+		// Saves the current node before moving to the next. 
+		// When the loop exits at a leaf, last will hold the leaf node.
 		last = next;
 		// Convert the maple_enode to a maple_node type
 		node = mte_to_node(next);
@@ -2955,14 +2957,27 @@ static inline void *mtree_range_walk(struct ma_state *mas)
 		end = ma_data_end(node, type, pivots, max);
 		prev_min = min;
 		prev_max = max;
+
+		// Fast path: if the first pivot is greater than or equal to the range start
+		// (mas->index), the target range begins in slot 0.
+		// The '=' case is valid since pivots are inclusive upper boundaries —
+		// a range starting exactly at pivot[0] still belongs to slot 0.
+		// min remains unchanged since slot 0 inherits it from the current min.
 		if (pivots[0] >= mas->index) {
+			// The data is in slot[0]
 			offset = 0;
+			// In this traversal "max" represents:
+				// "The upper boundary of the slot we just entered"
 			max = pivots[0];
 			goto next;
 		}
 
+		// Since the data isn't in offset 0 ie slot[0]
 		offset = 1;
+
+		// loop until the offset reaches the end
 		while (offset < end) {
+
 			if (pivots[offset] >= mas->index) {
 				max = pivots[offset];
 				break;
@@ -2972,8 +2987,12 @@ static inline void *mtree_range_walk(struct ma_state *mas)
 
 		min = pivots[offset - 1] + 1;
 next:
+		// We get the slots based on node type(ie mr64, ma64)
 		slots = ma_slots(node, type);
+		// We get the specific slot in index "offset"
 		next = mt_slot(mas->tree, slots, offset);
+
+		// Check if the node is a dead node
 		if (unlikely(ma_dead_node(node)))
 			goto dead_node;
 	} while (!ma_is_leaf(type));
