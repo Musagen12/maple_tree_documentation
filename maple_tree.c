@@ -2951,6 +2951,7 @@ static inline void *mtree_range_walk(struct ma_state *mas)
 		type = mte_node_type(next);
 		// Get the pivots of the node "next"
 		pivots = ma_pivots(node, type);
+		// extracts the end of the data  from the maple_metadata
 		end = ma_data_end(node, type, pivots, max);
 		prev_min = min;
 		prev_max = max;

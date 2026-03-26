@@ -480,7 +480,7 @@ struct ma_state {
 	struct maple_tree *tree;	 // Maple tree being operated on
 
 	// The whole range for traversal
-	// Why start index and last. Because maple trees operate with ranges not indivicual keys
+	// Why start index and last. Because maple trees operate with ranges not individual keys
 	unsigned long index;		// Start of the range being operated on
 	unsigned long last;		   // End of the range being operated on
 
