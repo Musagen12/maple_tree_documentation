@@ -2924,7 +2924,8 @@ static inline bool mast_overflow(struct maple_subtree_state *mast)
 	return false;
 }
 
-// It finds the slot that contains the range [mas->index–mas->last]
+// mtree_range_walk() descends the tree level by level, at each level finding which slot contains mas->index, 
+// until it reaches a leaf and returns the value stored in that slot.
 static inline void *mtree_range_walk(struct ma_state *mas)
 {
 	// Variable initialization
@@ -2966,8 +2967,10 @@ static inline void *mtree_range_walk(struct ma_state *mas)
 		type = mte_node_type(next);
 		// Get the pivots of the node "next"
 		pivots = ma_pivots(node, type);
-		// extracts the end of the data  from the maple_metadata
+		// extracts the end of the data within the node from the maple_metadata
 		end = ma_data_end(node, type, pivots, max);
+
+		// We are storing the values of the previous range 
 		prev_min = min;
 		prev_max = max;
 
@@ -2990,11 +2993,11 @@ static inline void *mtree_range_walk(struct ma_state *mas)
 		// Since the data isn't in offset 0 ie slot[0]
 		offset = 1;
 
-		// loop until the offset reaches the end
+		// loop until the offset reaches "end"
 		while (offset < end) {
+
 			// Scans pivots from slot 1 onwards until finding the slot whose upper boundary (pivots[offset]) is greater than or equal to mas->index. 
 			// Updates max to that slot's upper boundary and stops.
-
 			if (pivots[offset] >= mas->index) {
 				max = pivots[offset];
 				break;
@@ -3018,11 +3021,14 @@ next:
 	// record the updated results once the leaf is reached
 	mas->end = end;
 	mas->offset = offset;
-	mas->index = min;
-	mas->last = max;
-	mas->min = prev_min;
-	mas->max = prev_max;
-	mas->node = last;
+	mas->index = min;   // The lower boundary of the slot we found
+	mas->last = max;	// The upper boundary of the slot we found
+	mas->min = prev_min; //The lower boundary of the parent
+	mas->max = prev_max;	// The upper boundary of the parent
+	mas->node = last;  // Tracks the node itself(ie the leaf node)
+
+	// next at this point holds the value stored in the found slot.
+	// The loop exits when ma_is_leaf(type) is true. At the leaf level, slots do not contain child node pointers — they contain the actual data values that were stored in the tree.
 	return (void *)next;
 
 // If a dead node was detected mid-traversal, resets mas entirely and returns NULL signaling the caller to retry
