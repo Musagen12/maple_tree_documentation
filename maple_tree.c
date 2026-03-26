@@ -2927,6 +2927,18 @@ static inline bool mast_overflow(struct maple_subtree_state *mast)
 // It finds the slot that contains the range [mas->index–mas->last]
 static inline void *mtree_range_walk(struct ma_state *mas)
 {
+	// Variable initialization
+
+	// pivots — pointer to the pivot array of the current node
+	// offset — the slot index we are currently examining
+	// node — the raw maple node (stripped of type encoding)
+	// next — the next node to visit, encoded as enode
+	// last — the last node visited, used to return the leaf node
+	// type — the maple type of the current node
+	// slots — the array of child pointers/values in the current node
+	// end — index of the last populated slot in the current node
+	// max, min — upper and lower boundaries of the current node's range
+	// prev_max, prev_min — boundaries of the parent node, saved before updating for the next level
 	unsigned long *pivots;
 	unsigned char offset;
 	struct maple_node *node;
