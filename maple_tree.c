@@ -1055,7 +1055,8 @@ static inline void *mas_root_locked(struct ma_state *mas)
 }
 
 
-// Gets the maple_metadata depending on the node type
+// Gets the maple_metadata struct based on the node type
+// The specific node names(ie mr64, ma64) originate from the definition of the maple_node
 static inline struct maple_metadata *ma_meta(struct maple_node *mn,
 					     enum maple_type mt)
 {
@@ -1152,7 +1153,7 @@ static inline void mt_clear_meta(struct maple_tree *mt, struct maple_node *mn,
  * @mn: The maple node
  * @mt: The maple node type
  */
-// Getting the end of the node from the maple_metadata
+// Extracting the end of data in the node(This is from the maple_metadata)
 static inline unsigned char ma_meta_end(struct maple_node *mn,
 					enum maple_type mt)
 {
@@ -1617,24 +1618,37 @@ retry:
  * Uses metadata to find the end of the data when possible.
  * Return: The zero indexed last slot with data (may be null).
  */
+// It answers "what is the index of the last populated slot"
 static __always_inline unsigned char ma_data_end(struct maple_node *node,
 		enum maple_type type, unsigned long *pivots, unsigned long max)
 {
 	unsigned char offset;
 
+	// If there are no pivots(ie maple_dense node) just return 0
 	if (!pivots)
 		return 0;
 
+	// Extracting the end is straight-foward since maple_arange_64 nodes must always have maple_metadata as per their definition
 	if (type == maple_arange_64)
 		return ma_meta_end(node, type);
 
+	// Calculate the index of the last node
+	// ie for maple_range_64 nodes offset = 15 - 1 = 14
+	// 14 is the index of the last pivot
+	// offset is the index of the last pivot, not the last slot
 	offset = mt_pivots[type] - 1;
+
+	// Checks if the last pivot is empty, meaning the node is not fully populated
+	// If so then it means the last slot contains metadata about the node not a pointer to a node
 	if (likely(!pivots[offset]))
 		return ma_meta_end(node, type);
 
+	// Checks if last pivot is marking the boundary of the node's range means there is nothing beyond it
 	if (likely(pivots[offset] == max))
+		// The last valid slot is at index "offset"
 		return offset;
 
+	// Mean that "The last valid slot is at index mt_pivots[type]" — one beyond the last pivot
 	return mt_pivots[type];
 }
 
@@ -2922,13 +2936,20 @@ static inline void *mtree_range_walk(struct ma_state *mas)
 	unsigned long max, min;
 	unsigned long prev_max, prev_min;
 
+	// Get the node from ma_state
 	next = mas->node;
+	// Get the min and max from ma_state
 	min = mas->min;
 	max = mas->max;
+
+	// Traversal loop
 	do {
 		last = next;
+		// Convert the maple_enode to a maple_node type
 		node = mte_to_node(next);
+		// Get the maple_type of the node "next"
 		type = mte_node_type(next);
+		// Get the pivots of the node "next"
 		pivots = ma_pivots(node, type);
 		end = ma_data_end(node, type, pivots, max);
 		prev_min = min;
