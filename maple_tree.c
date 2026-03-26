@@ -2924,7 +2924,7 @@ static inline bool mast_overflow(struct maple_subtree_state *mast)
 	return false;
 }
 
-// It find the slot that contains the range [mas->index–mas->last]
+// It finds the slot that contains the range [mas->index–mas->last]
 static inline void *mtree_range_walk(struct ma_state *mas)
 {
 	unsigned long *pivots;
