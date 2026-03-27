@@ -2916,6 +2916,8 @@ static inline bool mast_sufficient(struct maple_subtree_state *mast)
  * single node.
  * @mast: The maple subtree state
  */
+
+// Check if there is too much data for the node
 static inline bool mast_overflow(struct maple_subtree_state *mast)
 {
 	if (mast->bn->b_end > mt_slot_count(mast->orig_l->node))
