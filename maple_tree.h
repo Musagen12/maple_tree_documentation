@@ -156,19 +156,6 @@ enum store_type {
 };
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
 /**
  * DOC: Maple tree flags
  *
@@ -472,8 +459,6 @@ enum maple_status {
 // initialize ma_wr_state
 //      ↓
 // perform structural changes
-
-
 
 
 struct ma_state {
