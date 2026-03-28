@@ -2916,8 +2916,6 @@ static inline bool mast_sufficient(struct maple_subtree_state *mast)
  * single node.
  * @mast: The maple subtree state
  */
-
-// Check if there is too much data for the node
 static inline bool mast_overflow(struct maple_subtree_state *mast)
 {
 	if (mast->bn->b_end > mt_slot_count(mast->orig_l->node))
@@ -2931,7 +2929,7 @@ static inline bool mast_overflow(struct maple_subtree_state *mast)
 static inline void *mtree_range_walk(struct ma_state *mas)
 {
 	// Variable initialization
-
+	// ===============================================================
 	// pivots — pointer to the pivot array of the current node
 	// offset — the slot index we are currently examining
 	// node — the raw maple node (stripped of type encoding)
