@@ -1,3 +1,4 @@
-- Bitwise operators manipulate the individual bits (0s and 1s) of integer operands(e.g &, |, ^, <<, >>)
-
-- Logical operators (&&, ||, !) evaluate entire expressions for boolean truth, treating non-zero as true and zero as false
+- Bitwise operators manipulate the individual bits (0s and 1s) of integer operands(e.g &, |, ^, <<, >>).
+- Logical operators (&&, ||, !) evaluate entire expressions for boolean truth, treating non-zero
+  as true and zero as false. 
+- Each slot stores a single range starting from (previous_slot - 1) to the current slot.

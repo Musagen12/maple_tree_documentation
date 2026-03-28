@@ -2926,15 +2926,6 @@ static inline bool mast_overflow(struct maple_subtree_state *mast)
 
 // mtree_range_walk() descends the tree level by level, at each level finding which slot contains mas->index, 
 // until it reaches a leaf and returns the value stored in that slot.
-
-
-/*
-Important reminder
-===================
-- Each slot stores a single range
-*/
-
-
 static inline void *mtree_range_walk(struct ma_state *mas)
 {
 	// Variable initialization
