@@ -2926,6 +2926,15 @@ static inline bool mast_overflow(struct maple_subtree_state *mast)
 
 // mtree_range_walk() descends the tree level by level, at each level finding which slot contains mas->index, 
 // until it reaches a leaf and returns the value stored in that slot.
+
+
+/*
+Important reminder
+===================
+- Each slot stores a single range
+*/
+
+
 static inline void *mtree_range_walk(struct ma_state *mas)
 {
 	// Variable initialization
@@ -2993,9 +3002,8 @@ static inline void *mtree_range_walk(struct ma_state *mas)
 		// Since the data isn't in offset 0 ie slot[0]
 		offset = 1;
 
-		// loop until the offset reaches "end"
+		// loop until the offset reaches "end" which marks the end of the node
 		while (offset < end) {
-
 			// Scans pivots from slot 1 onwards until finding the slot whose upper boundary (pivots[offset]) is greater than or equal to mas->index. 
 			// Updates max to that slot's upper boundary and stops.
 			if (pivots[offset] >= mas->index) {
@@ -3013,6 +3021,8 @@ next:
 		// We get the specific slot in index "offset"
 		next = mt_slot(mas->tree, slots, offset);
 
+		// The check is "Was the node I just read from dead?"
+		// The check is this late since checking at the start would not help since the node could die while you are reading it, not before.
 		// Check if the node is a dead node(Its unlikely)
 		if (unlikely(ma_dead_node(node)))
 			goto dead_node;
