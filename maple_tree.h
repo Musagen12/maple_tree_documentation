@@ -546,6 +546,12 @@ struct ma_wr_state {
 /*
  * When changing MA_STATE, remember to also change rust/kernel/maple_tree.rs
  */
+
+// Initializes a new ma_state for traversal of maple tree 'mt'
+// searching for range [first, end].
+// Node is NULL and status is ma_start since traversal has not begun.
+// min/max start at [0, ULONG_MAX] — the widest possible range,
+// narrowing as we descend into the tree.
 #define MA_STATE(name, mt, first, end)					\
 	struct ma_state name = {					\
 		.tree = mt,						\

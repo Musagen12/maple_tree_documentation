@@ -6342,6 +6342,7 @@ void __init maple_tree_init(void)
  */
 void *mtree_load(struct maple_tree *mt, unsigned long index)
 {
+	// Initializing an ma_state for traversal
 	MA_STATE(mas, mt, index, index);
 	void *entry;
 
