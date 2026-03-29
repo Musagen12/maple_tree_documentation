@@ -3795,6 +3795,7 @@ static inline void *mtree_lookup_walk(struct ma_state *mas)
 			goto dead_node;
 	} while (!ma_is_leaf(type)); // Stop after getting to the leaf node
 
+	// Returns the contents of the repective leaf node
 	return (void *)next;
 
 dead_node:
