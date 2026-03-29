@@ -3004,6 +3004,9 @@ static inline void *mtree_range_walk(struct ma_state *mas)
 			offset++;
 		}
 
+		// If the loop continues without any breaks(ie meaning that mas->index is in the last slot), the previous max
+		// is retained and the min calculated correctly
+
 		// We get the min by going to the previous pivot and increase by 1 to get the beginning of the slot 
 		min = pivots[offset - 1] + 1;
 next:
@@ -3750,6 +3753,9 @@ static inline void *mas_state_walk(struct ma_state *mas)
  * Note: Leaves mas in undesirable state.
  * Return: The entry for @mas->index or %NULL on dead node.
  */
+
+// Basically a simplified version of mtree_range_walk() that only gets the data from the leaf node
+// without updating the ma_state
 static inline void *mtree_lookup_walk(struct ma_state *mas)
 {
 	unsigned long *pivots;
@@ -3760,23 +3766,34 @@ static inline void *mtree_lookup_walk(struct ma_state *mas)
 	void __rcu **slots;
 	unsigned char end;
 
+	// Get the node from the ma_state
 	next = mas->node;
 	do {
+		// Remove the encoding
 		node = mte_to_node(next);
+		// Get the node type
 		type = mte_node_type(next);
+		// Get the array of pivots
 		pivots = ma_pivots(node, type);
+		// Get the largest pivot
 		end = mt_pivots[type];
 		offset = 0;
 		do {
+			// Check if data(ie mas->index) is located in slot[offset].
+			// This is done by comparing with pivots[offset] as shown below 
 			if (pivots[offset] >= mas->index)
 				break;
-		} while (++offset < end);
+		} while (++offset < end);   // Increament offset first then compare with end(ie ensure that the offset doesn't exceed the size of the node)
 
+		// Get all the slots
 		slots = ma_slots(node, type);
+		// Extract the next node from the slot of index offset
 		next = mt_slot(mas->tree, slots, offset);
+
+		// Check whether the node is dead
 		if (unlikely(ma_dead_node(node)))
 			goto dead_node;
-	} while (!ma_is_leaf(type));
+	} while (!ma_is_leaf(type)); // Stop after getting to the leaf node
 
 	return (void *)next;
 
