@@ -6346,7 +6346,10 @@ void *mtree_load(struct maple_tree *mt, unsigned long index)
 	MA_STATE(mas, mt, index, index);
 	void *entry;
 
+	// triggers a TRACE_EVENT for read operations
 	trace_ma_read(TP_FCT, &mas);
+
+	// 
 	rcu_read_lock();
 retry:
 	entry = mas_start(&mas);

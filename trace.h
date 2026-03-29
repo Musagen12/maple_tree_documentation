@@ -7,6 +7,8 @@
 
 #include <linux/tracepoint.h>
 
+// TRACE_EVENT annotation is done below
+
 struct ma_state;
 
 // Defines three trace events that can be hooked into the kernel's ftrace system to observe Maple Tree operations at runtime:
@@ -15,6 +17,7 @@ struct ma_state;
 	// ma_write - Tracks write operations — additionally tracks piv (pivot) and val (value being written)
 
 
+// The function trace_ma_op() triggers this event
 TRACE_EVENT(ma_op,
 
 	TP_PROTO(const char *fn, struct ma_state *mas),
@@ -48,6 +51,8 @@ TRACE_EVENT(ma_op,
 		  (unsigned long) __entry->last
 	)
 )
+
+// The function trace_ma_read() triggers this event
 TRACE_EVENT(ma_read,
 
 	TP_PROTO(const char *fn, struct ma_state *mas),
@@ -82,13 +87,17 @@ TRACE_EVENT(ma_read,
 	)
 )
 
+// The function trace_ma_write() triggers this event
 TRACE_EVENT(ma_write,
 
+	// TP_PROTO shows what parameters the trace point accepts
 	TP_PROTO(const char *fn, struct ma_state *mas, unsigned long piv,
 		 void *val),
 
+	// TP_ARGS defines the arguments
 	TP_ARGS(fn, mas, piv, val),
 
+	// TP_STRUCT__entry defines what data to capture and store
 	TP_STRUCT__entry(
 			__field(const char *, fn)
 			__field(unsigned long, min)
@@ -100,6 +109,7 @@ TRACE_EVENT(ma_write,
 			__field(void *, node)
 	),
 
+	// Copies the data from mas and stores it in a buffer awaiting usage in the printk
 	TP_fast_assign(
 			__entry->fn		= fn;
 			__entry->min		= mas->min;
@@ -111,6 +121,7 @@ TRACE_EVENT(ma_write,
 			__entry->node		= mas->node;
 	),
 
+	// Prints out the logs
 	TP_printk("%s\tNode %p (%lu %lu) range:%lu-%lu piv (%lu) val %p",
 		  __entry->fn,
 		  (void *) __entry->node,
