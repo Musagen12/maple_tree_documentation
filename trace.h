@@ -109,7 +109,7 @@ TRACE_EVENT(ma_write,
 			__field(void *, node)
 	),
 
-	// Copies the data from mas and stores it in a buffer awaiting usage in the printk
+	// Copies the data from mas and then stores it in a buffer awaiting usage in TP_printk
 	TP_fast_assign(
 			__entry->fn		= fn;
 			__entry->min		= mas->min;
