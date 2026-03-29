@@ -6342,7 +6342,10 @@ void __init maple_tree_init(void)
  */
 void *mtree_load(struct maple_tree *mt, unsigned long index)
 {
-	// Initializing an ma_state for traversal
+	// Initializes the ma_state walker with:
+		// - the tree mt
+		// - index as both the search key and range (point lookup, not a range query)
+		// - status implicitly set to ma_start
 	MA_STATE(mas, mt, index, index);
 	void *entry;
 
