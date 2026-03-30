@@ -1602,15 +1602,17 @@ retry:
 			// This function converts the 10 to 00 clearing the root encoding
 			mas->node = mte_safe_root(root);
 			mas->offset = 0;
-			// If the node is dead retry
+			// Checks whether the node we just got is dead
 			if (mte_dead_node(mas->node))
 				goto retry;
 
 			return NULL;
 		}
 
+		// set it to null since the other cases have no nodes created
 		mas->node = NULL;
 		/* empty tree */
+		// When the root is empty
 		if (unlikely(!root)) {
 			mas->status = ma_none;
 			mas->offset = MAPLE_NODE_SLOTS;
@@ -1621,6 +1623,7 @@ retry:
 		// No node is allocated
 
 		/* Single entry tree */
+		// If "root" isn't empty and not a node
 		mas->status = ma_root;
 		mas->offset = MAPLE_NODE_SLOTS;
 
@@ -1628,6 +1631,7 @@ retry:
 		if (mas->index > 0)
 			return NULL;
 
+		// Return "root" ie the value stored
 		return root;
 	}
 
