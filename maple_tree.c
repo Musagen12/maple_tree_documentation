@@ -1587,9 +1587,12 @@ retry:
 		// This is done by:
 			// - xa_is_internal(entry)  →  low 2 bits == 10 (ie 2 in decimal). It checks if its an internal entry
 				// This based on the comment:
-				"To optimise for the page cache, an entry which ends in '00',
-				'01' or '11' is stored in the root, but an entry which ends in '10' will be
-				stored in a node"
+				/*  
+				    To optimise for the page cache, an entry which ends in '00',
+					'01' or '11' is stored in the root, but an entry which ends in '10' will be
+					stored in a node
+				*/
+
 			// - (unsigned long)entry > 4096  →  not a small reserved value
 
 		// It checks whether there is an allocated node
@@ -1614,6 +1617,7 @@ retry:
 		/* empty tree */
 		// When the root is empty
 		if (unlikely(!root)) {
+			// There is no node in the tree
 			mas->status = ma_none;
 			mas->offset = MAPLE_NODE_SLOTS;
 			return NULL;

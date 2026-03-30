@@ -398,7 +398,7 @@ enum maple_status {
 	ma_active, // The maple state is pointing to a node and offset and can continue operating on the tree
 	ma_start, // Traversal hasn't started yet
 	ma_root, // The entry lives in the root of the tree
-	ma_none,  // There is no node in the tree for this entry after traversal
+	ma_none,  // There is no node in the tree
 	ma_pause, // State may be stale. Usually happens after RCU retry or tree modification hence the algorithm must restart
 	ma_overflow, // Traversal exceeded upper limit.
 	ma_underflow, // Traversal reached the lower limit.
