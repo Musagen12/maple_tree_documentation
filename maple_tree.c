@@ -1563,23 +1563,46 @@ static inline void mas_free(struct ma_state *mas, struct maple_enode *used)
  * - If it's a single entry:    The entry & mas->status == ma_root
  * - If it's a tree:            NULL & mas->status == ma_active
  */
+ // ma_start() sets up the ma_state for traversal 
 static inline struct maple_enode *mas_start(struct ma_state *mas)
 {
+	// Verifies that mas->status is ma_start(Meaning traversal hasn't started).
+	// If not return NULL since we are working with new instances
 	if (likely(mas_is_start(mas))) {
 		struct maple_enode *root;
 
+		// Initialize with the largest range as possible
 		mas->min = 0;
 		mas->max = ULONG_MAX;
 
 retry:
+		// Resets the depth and covers all three cases
 		mas->depth = 0;
+
+		// We get the root node by mas->tree->root
 		root = mas_root(mas);
 		/* Tree with nodes */
+
+		// xa_is_node() is an xarray function that verifies if "root" is a nodes.
+		// This is done by:
+			// - xa_is_internal(entry)  →  low 2 bits == 10 (ie 2 in decimal). It checks if its an internal entry
+				// This based on the comment:
+				"To optimise for the page cache, an entry which ends in '00',
+				'01' or '11' is stored in the root, but an entry which ends in '10' will be
+				stored in a node"
+			// - (unsigned long)entry > 4096  →  not a small reserved value
+
+		// It checks whether there is an allocated node
 		if (likely(xa_is_node(root))) {
+			// This is redundant but necessary in defensive programming
 			mas->depth = 0;
+			// Because there is an allocated node as the above if statement proves
 			mas->status = ma_active;
+			// By now the last 2 bits of root are 10
+			// This function converts the 10 to 00 clearing the root encoding
 			mas->node = mte_safe_root(root);
 			mas->offset = 0;
+			// If the node is dead retry
 			if (mte_dead_node(mas->node))
 				goto retry;
 
@@ -1593,6 +1616,9 @@ retry:
 			mas->offset = MAPLE_NODE_SLOTS;
 			return NULL;
 		}
+
+		// A single entry tree stores the value directly in the root pointer
+		// No node is allocated
 
 		/* Single entry tree */
 		mas->status = ma_root;
