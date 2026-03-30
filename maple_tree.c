@@ -6389,27 +6389,71 @@ void *mtree_load(struct maple_tree *mt, unsigned long index)
 	// Begins the reader
 	rcu_read_lock();
 retry:
+	// Store the return value for the function ie entry for the single entry tree and NULL for empty and populated trees
 	entry = mas_start(&mas);
+
+	// If the tree is empty
 	if (unlikely(mas_is_none(&mas)))
+		// Release the lock since there is nothing to read
 		goto unlock;
 
+	// If its a single entry tree
 	if (unlikely(mas_is_ptr(&mas))) {
+		//  if (index) is just a shorthand for if (index != 0) — if the caller asked for anything beyond index 0, null it out. 
+		// Then bail to unlock since there are no nodes to walk.
 		if (index)
 			entry = NULL;
 
+		// Realease the lock
 		goto unlock;
 	}
 
+	// If the tree has nodes
+	// Traverse the tree looking for index
 	entry = mtree_lookup_walk(&mas);
+
+	// If an entry isn't found and the mas->status is ma_start(ie the traversal was invalidated midway) redo the traversal. This is unlikely
 	if (!entry && unlikely(mas_is_start(&mas)))
 		goto retry;
 unlock:
+	// Releasing the read lock
 	rcu_read_unlock();
+
+	/*
+		The XArray/maple tree has a problem — how do you distinguish between:
+			"nothing is stored at this index"       →  entry == NULL
+			"user explicitly stored NULL here"      →  entry == NULL  ← same thing!
+
+		You can't, if you just use raw NULL. So the tree uses a special sentinel:
+			#define XA_ZERO_ENTRY    xa_mk_internal(257)
+			```
+			This is a small internal value with `10` in its low bits — it will never be a real user pointer or a real node. It means **"the user deliberately stored NULL here"**.
+			## So the tree internally sees two different things:
+			```
+			slot is empty          →  raw NULL        (nothing ever stored)
+			user stored NULL       →  XA_ZERO_ENTRY   (explicitly stored)
+	*/	
+
+	/*
+		#define XA_ZERO_ENTRY    xa_mk_internal(257)
+		xa_mk_internal(257) {
+			(void *)((257 << 2) | 2);
+		}
+
+		Step by step:
+			257 in binary    =  100000001
+			257 << 2         =  10000000100   (shift left 2, making room for tag bits)
+			| 2              =  10000000110   (set bit 1, giving it the 10 internal tag)
+			So XA_ZERO_ENTRY is just the value 1030 with 10 in its low bits — making it look like an internal entry to all the encoding checks
+	*/
+
 	if (xa_is_zero(entry))
+		// XA_ZERO_ENTRY gets normalized to NULL right before returning since the caller doesn't care about this distinction.
 		return NULL;
 
 	return entry;
 }
+// This simply makes mtree_load available to loadable kernel modules
 EXPORT_SYMBOL(mtree_load);
 
 /**
