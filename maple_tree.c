@@ -219,11 +219,6 @@ static inline void mt_free_bulk(size_t size, void __rcu **nodes)
 	kmem_cache_free_bulk(maple_node_cache, size, (void **)nodes);
 }
 
-
-
-
-
-
 static void mt_return_sheaf(struct slab_sheaf *sheaf)
 {
 	kmem_cache_return_sheaf(maple_node_cache, GFP_NOWAIT, sheaf);
@@ -1602,7 +1597,7 @@ retry:
 			// Because there is an allocated node as the above if statement proves
 			mas->status = ma_active;
 			// By now the last 2 bits of root are 10
-			// This function converts the 10 to 00 clearing the root encoding
+			// This function converts the 10 to 00 clearing the root encoding ie bit 1
 			mas->node = mte_safe_root(root);
 			mas->offset = 0;
 			// Checks whether the node we just got is dead
@@ -1632,7 +1627,7 @@ retry:
 		mas->offset = MAPLE_NODE_SLOTS;
 
 		/* Single entry tree. */
-		if (mas->index > 0)
+		if (mas->index > 0)    // If someone tries to access a value in an offset greater than 1 return a NULL since that is not possible
 			return NULL;
 
 		// Return "root" ie the value stored
@@ -4280,9 +4275,13 @@ static inline void mas_wr_store_entry(struct ma_wr_state *wr_mas)
 
 static inline void mas_wr_prealloc_setup(struct ma_wr_state *wr_mas)
 {
+	// Extract the ma_state from ma_wr_state
 	struct ma_state *mas = wr_mas->mas;
 
+	// If ma_state->status != active
 	if (!mas_is_active(mas)) {
+
+		 // A fresh state, no reset needed, go straight to set_conten
 		if (mas_is_start(mas))
 			goto set_content;
 
@@ -4299,11 +4298,7 @@ static inline void mas_wr_prealloc_setup(struct ma_wr_state *wr_mas)
 			goto reset;
 	}
 
-	/*
-	 * A less strict version of mas_is_span_wr() where we allow spanning
-	 * writes within this node.  This is to stop partial walks in
-	 * mas_prealloc() from being reset.
-	 */
+	// If the end of the range being stored is greater than the node's upper bound(ie its a spanning store)
 	if (mas->last > mas->max)
 		goto reset;
 
@@ -4316,6 +4311,7 @@ static inline void mas_wr_prealloc_setup(struct ma_wr_state *wr_mas)
 	goto set_content;
 
 reset:
+	// Resets mas back to "ma_start" status, clears the node, restores min=0 and max=ULONG_MAX — essentially back to the same state as a fresh MA_STATE
 	mas_reset(mas);
 set_content:
 	wr_mas->content = mas_start(mas);
@@ -5610,10 +5606,16 @@ EXPORT_SYMBOL_GPL(mas_store);
  * Return: 0 on success, -EINVAL on invalid request, -ENOMEM if memory could not
  * be allocated.
  */
+
+ // gfp_t is a typedef used to represent memory allocation flags
+
 int mas_store_gfp(struct ma_state *mas, void *entry, gfp_t gfp)
 {
+	// Get the range of operation from the ma_state
 	unsigned long index = mas->index;
 	unsigned long last = mas->last;
+
+	// Initialize ma_wr_state which is just a writter wrapper on top of ma_state
 	MA_WR_STATE(wr_mas, mas, entry);
 	int ret = 0;
 
@@ -6465,8 +6467,9 @@ EXPORT_SYMBOL(mtree_load);
  * @gfp: The GFP_FLAGS to use for allocations
  *
  * Return: 0 on success, -EINVAL on invalid request, -ENOMEM if memory could not
- * be allocated.
+ * be allocated.(or memory ran out)
  */
+
 int mtree_store_range(struct maple_tree *mt, unsigned long index,
 		unsigned long last, void *entry, gfp_t gfp)
 {
@@ -6474,6 +6477,8 @@ int mtree_store_range(struct maple_tree *mt, unsigned long index,
 	int ret = 0;
 
 	trace_ma_write(TP_FCT, &mas, 0, entry);
+
+	// Is the entry only permitted for the advanced API?
 	if (WARN_ON_ONCE(xa_is_advanced(entry)))
 		return -EINVAL;
 
