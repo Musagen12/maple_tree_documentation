@@ -4273,39 +4273,52 @@ static inline void mas_wr_store_entry(struct ma_wr_state *wr_mas)
 	return;
 }
 
+// This is just a set-up function meant to prepare for allocation
 static inline void mas_wr_prealloc_setup(struct ma_wr_state *wr_mas)
 {
 	// Extract the ma_state from ma_wr_state
 	struct ma_state *mas = wr_mas->mas;
 
-	// If ma_state->status != active
+	// If the tree isn't in the ma_active state(ie traversal has started)
 	if (!mas_is_active(mas)) {
-
-		 // A fresh state, no reset needed, go straight to set_conten
+		// A fresh MA_STATE that hasn't started traversal yet — this is valid for a write
 		if (mas_is_start(mas))
 			goto set_content;
 
+		// A paused state means traversal was intentionally suspended mid-walk — not a valid starting point for a write operation
 		if (unlikely(mas_is_paused(mas)))
 			goto reset;
 
+		// ma_none means the tree is empty or the state is uninitialized beyond ma_start — invalid for a write. Reset.
 		if (unlikely(mas_is_none(mas)))
 			goto reset;
 
+		// mas->index went beyond ULONG_MAX during a previous operation — the state is out of bounds. Reset.
 		if (unlikely(mas_is_overflow(mas)))
 			goto reset;
 
+		// mas->index went below 0 during a previous operation — the state is out of bounds in the other direction. Reset.
 		if (unlikely(mas_is_underflow(mas)))
 			goto reset;
 	}
 
 	// If the end of the range being stored is greater than the node's upper bound(ie its a spanning store)
+	// The current node position is insufficient to handle the store so reset and restart from root to handle the full range.
 	if (mas->last > mas->max)
 		goto reset;
 
+	// If all the checks passed(A regular entry that isn't an internal marker)
 	if (wr_mas->entry)
 		goto set_content;
 
-	if (mte_is_leaf(mas->node) && mas->last == mas->max)
+	// Manipulating the node up to mas->max means that pivot in the parent may need to:
+		// Move — to reflect the new boundary after deletion
+		// Be removed — if the slot becomes empty
+		// Trigger a merge — if the leaf becomes underpopulated after deletion
+
+	// The changes could cascade upward — if the parent itself becomes underpopulated after adjusting its pivot, its parent may need changes too.
+	// This necesitates a reset.
+	if (mte_is_leaf(mas->node) && mas->last == mas->max)        // Why is the node reuired to be a leaf node? Because data is stored in leaf nodes
 		goto reset;
 
 	goto set_content;
@@ -5611,11 +5624,11 @@ EXPORT_SYMBOL_GPL(mas_store);
 
 int mas_store_gfp(struct ma_state *mas, void *entry, gfp_t gfp)
 {
-	// Get the range of operation from the ma_state created byt the caller
+	// Get the range of operation from the ma_state created by the caller
 	unsigned long index = mas->index;
 	unsigned long last = mas->last;
 
-	// Initialize ma_wr_state which is just a writter wrapper on top of ma_state
+	// Initialize ma_wr_state which is just a writter wrapper on top of the pre-existing ma_state in the caller
 	MA_WR_STATE(wr_mas, mas, entry);
 	int ret = 0;
 
@@ -6507,6 +6520,7 @@ int mtree_store_range(struct maple_tree *mt, unsigned long index,
 
 	// Acquire the tree lock — prevents concurrent modifications
 	mtree_lock(mt);
+	
 	ret = mas_store_gfp(&mas, entry, gfp);
 	mtree_unlock(mt);
 
