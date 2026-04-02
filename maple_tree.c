@@ -5611,7 +5611,7 @@ EXPORT_SYMBOL_GPL(mas_store);
 
 int mas_store_gfp(struct ma_state *mas, void *entry, gfp_t gfp)
 {
-	// Get the range of operation from the ma_state
+	// Get the range of operation from the ma_state created byt the caller
 	unsigned long index = mas->index;
 	unsigned long last = mas->last;
 
@@ -6473,18 +6473,39 @@ EXPORT_SYMBOL(mtree_load);
 int mtree_store_range(struct maple_tree *mt, unsigned long index,
 		unsigned long last, void *entry, gfp_t gfp)
 {
+	// Initialize a ma_state with index-last as the range of the write operation
 	MA_STATE(mas, mt, index, last);
 	int ret = 0;
 
+	// Initiate the tracing of write events
 	trace_ma_write(TP_FCT, &mas, 0, entry);
 
-	// Is the entry only permitted for the advanced API?
+	// WARN_ON_ONCE is a macro used to report significant errors/bugs that should never occur
+
+	// "entry" is a pointer to user data
+	/*
+	xa_is_advanced() checks:
+		return xa_is_internal(entry) && (entry <= XA_RETRY_ENTRY);
+
+		xa_is_internal() — bottom two bits are 10 — this is a reserved internal value
+		entry <= XA_RETRY_ENTRY — it falls within the advanced marker range
+
+	It's meant to ensure internal markers aren't passed as entries into a tree
+
+	*/
+
+	// If an internal marker accidentally got stored as user data, the tree would later encounter it during traversal and treat it as a tree instruction rather than a pointer
+
 	if (WARN_ON_ONCE(xa_is_advanced(entry)))
+		// If the entry is an internal marker(ie a value meant to communicate the state of a maple tree/xarray eg XA_ZERO_ENTRY-distinguish btwn user defined NULLs and empty space NULLs)
+		// return "invalid arguments"
 		return -EINVAL;
 
+	// The index(start) must be smaller than the end(last)
 	if (index > last)
 		return -EINVAL;
 
+	// Acquire the tree lock — prevents concurrent modifications
 	mtree_lock(mt);
 	ret = mas_store_gfp(&mas, entry, gfp);
 	mtree_unlock(mt);
