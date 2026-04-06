@@ -4279,7 +4279,7 @@ static inline void mas_wr_prealloc_setup(struct ma_wr_state *wr_mas)
 	// Extract the ma_state from ma_wr_state
 	struct ma_state *mas = wr_mas->mas;
 
-	// If the tree isn't in the ma_active state(ie traversal has started)
+	// If mas is not actively positioned at a valid node from a previous traversal
 	if (!mas_is_active(mas)) {
 		// A fresh MA_STATE that hasn't started traversal yet — this is valid for a write
 		if (mas_is_start(mas))
