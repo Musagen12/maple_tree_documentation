@@ -402,7 +402,7 @@ enum maple_status {
 	ma_pause, // State may be stale. Usually happens after RCU retry or tree modification hence the algorithm must restart
 	ma_overflow, // Traversal exceeded upper limit.
 	ma_underflow, // Traversal reached the lower limit.
-	ma_error, // Indaicates that there was an error, check the node for the error number.(in "struct maple_enode *node" below. bit 1)
+	ma_error, // Indaicates that there was an error, check the node for the error number.(in "struct maple_enode *node" below. if bit 1 is set)
 };
 
 /*

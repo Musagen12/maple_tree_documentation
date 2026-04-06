@@ -4330,6 +4330,18 @@ set_content:
 	wr_mas->content = mas_start(mas);
 }
 
+
+
+
+// mas_reset() sets status = ma_start and clears mas->node — effectively saying:
+
+// "Forget everything about where we were in the tree"
+
+// Any traversal progress is discarded. The next call to mas_start() will then restart from the root as if the previous traversal never happened.
+
+
+
+
 /**
  * mas_prealloc_calc() - Calculate number of nodes needed for a
  * given store oepration
@@ -6498,9 +6510,9 @@ int mtree_store_range(struct maple_tree *mt, unsigned long index,
 	// "entry" is a pointer to user data
 	/*
 	xa_is_advanced() checks:
-		return xa_is_internal(entry) && (entry <= XA_RETRY_ENTRY);
+		if xa_is_internal(entry) && (entry <= XA_RETRY_ENTRY);
 
-		xa_is_internal() — bottom two bits are 10 — this is a reserved internal value
+		xa_is_internal() — if the bottom two bits are 10 — this is a reserved internal entry
 		entry <= XA_RETRY_ENTRY — it falls within the advanced marker range
 
 	It's meant to ensure internal markers aren't passed as entries into a tree
@@ -6516,9 +6528,11 @@ int mtree_store_range(struct maple_tree *mt, unsigned long index,
 
 	// The index(start) must be smaller than the end(last)
 	if (index > last)
+		// If it occurs return invalid arguments
 		return -EINVAL;
 
 	// Acquire the tree lock — prevents concurrent modifications
+	// Its a writer-writer lock
 	mtree_lock(mt);
 	
 	ret = mas_store_gfp(&mas, entry, gfp);
