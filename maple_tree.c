@@ -4273,7 +4273,8 @@ static inline void mas_wr_store_entry(struct ma_wr_state *wr_mas)
 	return;
 }
 
-// This is just a set-up function meant to prepare for allocation
+// Ensure mas is in a valid and correct state before the write operation begins — resetting if necessary, 
+// then positioning mas at the correct node via mas_start()
 static inline void mas_wr_prealloc_setup(struct ma_wr_state *wr_mas)
 {
 	// Extract the ma_state from ma_wr_state
@@ -4318,7 +4319,7 @@ static inline void mas_wr_prealloc_setup(struct ma_wr_state *wr_mas)
 
 	// The changes could cascade upward — if the parent itself becomes underpopulated after adjusting its pivot, its parent may need changes too.
 	// This necesitates a reset.
-	if (mte_is_leaf(mas->node) && mas->last == mas->max)        // Why is the node reuired to be a leaf node? Because data is stored in leaf nodes
+	if (mte_is_leaf(mas->node) && mas->last == mas->max)        // Why is the node required to be a leaf node? Because data is stored in leaf nodes
 		goto reset;
 
 	goto set_content;
@@ -4327,6 +4328,8 @@ reset:
 	// Resets mas back to "ma_start" status, clears the node, restores min=0 and max=ULONG_MAX — essentially back to the same state as a fresh MA_STATE
 	mas_reset(mas);
 set_content:
+	// ma_start - traversal happens, wr_mas->content gets the result
+	// ma_active - no-op, wr_mas->content = NULL
 	wr_mas->content = mas_start(mas);
 }
 
