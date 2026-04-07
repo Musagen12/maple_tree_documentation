@@ -512,7 +512,7 @@ struct ma_wr_state {
 	unsigned long end_piv;		/* The pivot at the offset end */
 	void __rcu **slots;		/* mas->node->slots pointer */
 
-	void *entry;			// The new value being stored
+	void *entry;			// The new value to be stored
 	void *content;			// The old value
 
 	unsigned char vacant_height;	/* Height of lowest node with free space */

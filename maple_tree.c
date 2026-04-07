@@ -1627,7 +1627,7 @@ retry:
 		mas->offset = MAPLE_NODE_SLOTS;
 
 		/* Single entry tree. */
-		if (mas->index > 0)    // If someone tries to access a value in an offset greater than 1 return a NULL since that is not possible
+		if (mas->index > 0)    // If someone tries to access a value in an offset greater than 0 return a NULL since that is not possible
 			return NULL;
 
 		// Return "root" ie the value stored
@@ -4273,8 +4273,10 @@ static inline void mas_wr_store_entry(struct ma_wr_state *wr_mas)
 	return;
 }
 
-// Ensure mas is in a valid and correct state before the write operation begins — resetting if necessary, 
-// then positioning mas at the correct node via mas_start()
+// The function harmonizes mas->state into either "ma_start" or "ma_active"
+// Then "wr_mas->content = mas_start(mas)" basically takes in the mas, If its "ma_active" set "content" as NULL
+// Else (ie if its "ma_start") mas_start() checks if its a tree with nodes(status becomes "ma_active", return NULL),
+// if the tree is empty(status becomes "ma_none", return NULL) and if the tree is a single entry tree(status becomes "ma_root", return the entry)
 static inline void mas_wr_prealloc_setup(struct ma_wr_state *wr_mas)
 {
 	// Extract the ma_state from ma_wr_state
@@ -4309,6 +4311,8 @@ static inline void mas_wr_prealloc_setup(struct ma_wr_state *wr_mas)
 		goto reset;
 
 	// If all the checks passed(A regular entry that isn't an internal marker)
+
+	// If there is "entry" (ie the new data being stored) then set_content
 	if (wr_mas->entry)
 		goto set_content;
 
@@ -4330,6 +4334,9 @@ reset:
 set_content:
 	// ma_start - traversal happens, wr_mas->content gets the result
 	// ma_active - no-op, wr_mas->content = NULL
+
+	// Basically we are setting  up the mas->status to be mostly "ma_active" and make the content "NULL" unless the tree is a single entry tree where we return the entry. 
+	// Since mas_start is just a startup function and only returns for single entry trees
 	wr_mas->content = mas_start(mas);
 }
 
@@ -6365,8 +6372,10 @@ EXPORT_SYMBOL_GPL(mas_erase);
  * Return: true on allocation, false otherwise.
  */
 bool mas_nomem(struct ma_state *mas, gfp_t gfp)
-	__must_hold(mas->tree->ma_lock)
+	__must_hold(mas->tree->ma_lock)   // The function requires an ma_lock to be held for it to work
 {
+	// Checks if mas is actually in an out of memory error state. If not — no memory issue, return false immediately.
+	// This is the common case hence likely()
 	if (likely(mas->node != MA_ERROR(-ENOMEM)))
 		return false;
 
