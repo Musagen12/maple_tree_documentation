@@ -136,9 +136,9 @@ struct maple_topiary {
 // The various node types
 enum maple_type {
 	maple_dense,  // They have no pivots
-	maple_leaf_64,
-	maple_range_64,
-	maple_arange_64,
+	maple_leaf_64, // Store data(eg VMAs)
+	maple_range_64,	// Found in range trees, stores pointers to nodes
+	maple_arange_64, // Found in allocation trees, stores pointers to nodes and tracks gaps
 };
 
 // Write operations

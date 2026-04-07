@@ -2409,28 +2409,52 @@ static inline void mas_node_or_none(struct ma_state *mas,
  *
  * Uses mas_slot_locked() and does not need to worry about dead nodes.
  */
+
+// This function is the write path equivalent of the pivot scanning loop in mtree_range_walk() — but operating on a single node rather than traversing the entire tree. 
+// It finds exactly which slot the write range starts in and sets up the range boundaries r_min and r_max for the write operation.
+
 static inline void mas_wr_node_walk(struct ma_wr_state *wr_mas)
 {
+	// Extract ma_state
 	struct ma_state *mas = wr_mas->mas;
 	unsigned char count, offset;
 
+	// Check if the node type is dense which is unlikely
 	if (unlikely(ma_is_dense(wr_mas->type))) {
+		// Dense node have no pivots hence every index maps directly to a slot
+		// So the range is just the single index point [mas->index, mas->index] and the offset is the index itself
 		wr_mas->r_max = wr_mas->r_min = mas->index;
 		mas->offset = mas->index = mas->min;
+		// Returns early since no pivot scanning is needed.
 		return;
 	}
 
+	// Converts the encoded node to a regular node
 	wr_mas->node = mas_mn(wr_mas->mas);
+
+	// Get the pivots array for the node
 	wr_mas->pivots = ma_pivots(wr_mas->node, wr_mas->type);
+
+	// Gets the last populated slot in the node
 	count = mas->end = ma_data_end(wr_mas->node, wr_mas->type,
 				       wr_mas->pivots, mas->max);
+
+	// Seeds the walk from the current offset — not from 0. 
+	// This is an optimization since mas->offset was already positioned during the previous traversal
 	offset = mas->offset;
 
-	while (offset < count && mas->index > wr_mas->pivots[offset])
+	// Walks forward through pivots until finding the slot whose pivot is greater than or equal to mas->index — the slot that contains the write range start. 
+	// Stops at "count" to avoid going past the last populated slot
+	while (offset < count && mas->index > wr_mas->pivots[offset])    // "mas->index > wr_mas->pivots[offset]" - Keep moving while the current value is too small
 		offset++;
 
+	// Sets the right boundary(ie the maximum) of the found slot:
+		// If not at the last slot — pivots[offset] is the right boundary
+		// If at the last slot — mas->max is the right boundary since the last slot has no right pivot
 	wr_mas->r_max = offset < count ? wr_mas->pivots[offset] : mas->max;
+	// Sets the left boundary(ie the minimum) of the slot
 	wr_mas->r_min = mas_safe_min(mas, wr_mas->pivots, offset);
+	// Stores the found offset in both wr_mas->offset_end and mas->offset — committing the position into both the write state and the main mas.
 	wr_mas->offset_end = mas->offset = offset;
 }
 
@@ -3655,6 +3679,7 @@ static bool mas_is_span_wr(struct ma_wr_state *wr_mas)
 
 static inline void mas_wr_walk_descend(struct ma_wr_state *wr_mas)
 {
+	// Extract the node type of mas->node containde in wr_mas
 	wr_mas->type = mte_node_type(wr_mas->mas->node);
 	mas_wr_node_walk(wr_mas);
 	wr_mas->slots = ma_slots(wr_mas->node, wr_mas->type);
@@ -3678,8 +3703,10 @@ static inline void mas_wr_walk_traverse(struct ma_wr_state *wr_mas)
  */
 static bool mas_wr_walk(struct ma_wr_state *wr_mas)
 {
+	// Get the ma_state "mas"
 	struct ma_state *mas = wr_mas->mas;
 
+	// Loop through the tree
 	while (true) {
 		mas_wr_walk_descend(wr_mas);
 		if (unlikely(mas_is_span_wr(wr_mas)))
@@ -4418,9 +4445,12 @@ static inline void mas_prealloc_calc(struct ma_wr_state *wr_mas, void *entry)
  */
 static inline enum store_type mas_wr_store_type(struct ma_wr_state *wr_mas)
 {
+	// Extract the ma_state from the ma_wr_state
 	struct ma_state *mas = wr_mas->mas;
 	unsigned char new_end;
 
+	// If the tree is empty or its a single entry tree store in the root
+	// This is unlikely since most operations occur in populated trees
 	if (unlikely(mas_is_none(mas) || mas_is_ptr(mas)))
 		return wr_store_root;
 
@@ -4469,7 +4499,9 @@ static inline void mas_wr_preallocate(struct ma_wr_state *wr_mas, void *entry)
 {
 	struct ma_state *mas = wr_mas->mas;
 
+	// A setup function for the write
 	mas_wr_prealloc_setup(wr_mas);
+
 	mas->store_type = mas_wr_store_type(wr_mas);
 	mas_prealloc_calc(wr_mas, entry);
 	if (!mas->node_request)
