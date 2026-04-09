@@ -2410,6 +2410,8 @@ static inline void mas_node_or_none(struct ma_state *mas,
  * Uses mas_slot_locked() and does not need to worry about dead nodes.
  */
 
+// "mas_wr_node_walk()" operates purely within the current node
+
 // This function is the write path equivalent of the pivot scanning loop in mtree_range_walk() — but operating on a single node rather than traversing the entire tree. 
 // It finds exactly which slot the write range starts in and sets up the range boundaries r_min and r_max for the write operation.
 static inline void mas_wr_node_walk(struct ma_wr_state *wr_mas)
@@ -2420,8 +2422,7 @@ static inline void mas_wr_node_walk(struct ma_wr_state *wr_mas)
 
 	// Check if the node type is dense which is unlikely
 	if (unlikely(ma_is_dense(wr_mas->type))) {
-		// Dense node have no pivots hence every index maps directly to a slot
-		// So the range is just the single index point [mas->index, mas->index] and the offset is the index itself
+		// "r_min" and "r_max" are set to the same value "mas->index" — representing a single point range since dense nodes map each index directly to a slot with no pivots.
 		wr_mas->r_max = wr_mas->r_min = mas->index;
 		mas->offset = mas->index = mas->min;
 		// Returns early since no pivot scanning is needed.
@@ -3676,11 +3677,15 @@ static bool mas_is_span_wr(struct ma_wr_state *wr_mas)
 	return true;
 }
 
+// Extracts the node type, sets the write range boundaries and gets the slot array
+// for the current node — prepares wr_mas for the actual write operation
 static inline void mas_wr_walk_descend(struct ma_wr_state *wr_mas)
 {
 	// Extract the node type of mas->node containde in wr_mas
 	wr_mas->type = mte_node_type(wr_mas->mas->node);
+	// Walks though a node and sets the range boundaries(ie r_min and r_max) for the write operation
 	mas_wr_node_walk(wr_mas);
+	// Get the slots based on the node type
 	wr_mas->slots = ma_slots(wr_mas->node, wr_mas->type);
 }
 
