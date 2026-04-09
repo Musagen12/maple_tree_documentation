@@ -2412,7 +2412,6 @@ static inline void mas_node_or_none(struct ma_state *mas,
 
 // This function is the write path equivalent of the pivot scanning loop in mtree_range_walk() — but operating on a single node rather than traversing the entire tree. 
 // It finds exactly which slot the write range starts in and sets up the range boundaries r_min and r_max for the write operation.
-
 static inline void mas_wr_node_walk(struct ma_wr_state *wr_mas)
 {
 	// Extract ma_state
@@ -2446,7 +2445,7 @@ static inline void mas_wr_node_walk(struct ma_wr_state *wr_mas)
 	// Walks forward through pivots until finding the slot whose pivot is greater than or equal to mas->index — the slot that contains the write range start. 
 	// Stops at "count" to avoid going past the last populated slot
 	while (offset < count && mas->index > wr_mas->pivots[offset])    // "mas->index > wr_mas->pivots[offset]" - Keep moving while the current value is too small
-		offset++;
+		offset++;  // Increament the offset
 
 	// Sets the right boundary(ie the maximum) of the found slot:
 		// If not at the last slot — pivots[offset] is the right boundary
@@ -4447,9 +4446,10 @@ static inline enum store_type mas_wr_store_type(struct ma_wr_state *wr_mas)
 {
 	// Extract the ma_state from the ma_wr_state
 	struct ma_state *mas = wr_mas->mas;
+
 	unsigned char new_end;
 
-	// If the tree is empty or its a single entry tree store in the root
+	// If the tree is empty or its a single entry tree the write type becomes wr_store_root(ie store in the root)
 	// This is unlikely since most operations occur in populated trees
 	if (unlikely(mas_is_none(mas) || mas_is_ptr(mas)))
 		return wr_store_root;
@@ -4499,7 +4499,7 @@ static inline void mas_wr_preallocate(struct ma_wr_state *wr_mas, void *entry)
 {
 	struct ma_state *mas = wr_mas->mas;
 
-	// A setup function for the write
+	// A setup function for the write that manipulates the ma_state and content
 	mas_wr_prealloc_setup(wr_mas);
 
 	mas->store_type = mas_wr_store_type(wr_mas);
