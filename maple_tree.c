@@ -3705,6 +3705,8 @@ static inline void mas_wr_walk_traverse(struct ma_wr_state *wr_mas)
  *
  * Return: True if it's contained in a node, false on spanning write.
  */
+
+// Verifies if the range is contained in one node or in multiple nodes(ie a spanning store write operation)
 static bool mas_wr_walk(struct ma_wr_state *wr_mas)
 {
 	// Get the ma_state "mas"
@@ -3712,6 +3714,7 @@ static bool mas_wr_walk(struct ma_wr_state *wr_mas)
 
 	// Loop through the tree
 	while (true) {
+		// It 
 		mas_wr_walk_descend(wr_mas);
 		if (unlikely(mas_is_span_wr(wr_mas)))
 			return false;
