@@ -972,12 +972,12 @@ static __always_inline bool mt_locked(const struct maple_tree *mt)
 		lockdep_is_held(&mt->ma_lock);
 }
 
-
-
+// Gets the content of the slot in index offset
 static __always_inline void *mt_slot(const struct maple_tree *mt,
 		void __rcu **slots, unsigned char offset)
 {
-	// Verify the conditions for an rcu_dereference() are met
+	// Verifies that either the tree lock is held or RCU read lock is held — ensuring safe access
+	// Returns the dereferenced pointer with the appropriate memory barriers to prevent the compiler/CPU from reordering the read
 	return rcu_dereference_check(slots[offset], mt_locked(mt));
 }
 
@@ -3727,6 +3727,12 @@ static inline void mas_wr_walk_traverse(struct ma_wr_state *wr_mas)
  * Return: True if it's contained in a node, false on spanning write.
  */
 
+
+// mas_wr_walk() walks down a single root-to-leaf path
+// At each level along that path it checks if the write spans beyond the current node. If it does at any point — stop and return false.
+// If it reaches the leaf without spanning — return true
+
+
 // Verifies if the range is contained in one node or in multiple nodes(ie a spanning store write operation)
 static bool mas_wr_walk(struct ma_wr_state *wr_mas)
 {
@@ -3737,20 +3743,37 @@ static bool mas_wr_walk(struct ma_wr_state *wr_mas)
 	while (true) {
 		// It updates the write range and the slots within the wr_mas
 		mas_wr_walk_descend(wr_mas);
+
+		// Check if its a spanning store
+		// This is unlikely
 		if (unlikely(mas_is_span_wr(wr_mas)))
 			return false;
 
+		// Stores the old data
 		wr_mas->content = mas_slot_locked(mas, wr_mas->slots,
 						  mas->offset);
+
+		// We stop since we have reached the end of the tree(ie the leaf node)
 		if (ma_is_leaf(wr_mas->type))
 			return true;
 
+		// mt_slots[wr_mas->type]  		 // total number of slots for this node type
+		// mt_slots[wr_mas->type] - 1  	 // slot indices are zero based. So the last valid slot index is mt_slots[wr_mas->type] - 1
+		// mas->end 				 	 // last populated slot index
+
+		// Checks if there is empty space in the node
 		if (mas->end < mt_slots[wr_mas->type] - 1)
+			// The height where there is space gets increased
 			wr_mas->vacant_height = mas->depth + 1;
 
+		// If the node is a the root
 		if (ma_is_root(mas_mn(mas))) {
 			/* root needs more than 2 entries to be sufficient + 1 */
+			// Because the root needs enough entries to justify the tree's existence as a multi-node structure
 			if (mas->end > 2)
+
+
+				
 				wr_mas->sufficient_height = 1;
 		} else if (mas->end > mt_min_slots[wr_mas->type] + 1)
 			wr_mas->sufficient_height = mas->depth + 1;
@@ -4483,6 +4506,7 @@ static inline enum store_type mas_wr_store_type(struct ma_wr_state *wr_mas)
 	if (unlikely(mas_is_none(mas) || mas_is_ptr(mas)))
 		return wr_store_root;
 
+	// Check if its a spanning store
 	if (unlikely(!mas_wr_walk(wr_mas)))
 		return wr_spanning_store;
 

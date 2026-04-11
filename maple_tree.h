@@ -494,7 +494,7 @@ TODO:
 
 
 	unsigned char mas_flags; // Various internal behavior flags that modify traversal behaviour
-	unsigned char end;		/* The end of the node */
+	unsigned char end;		/* The end of the node */  // index of the last populated slot in the current node
 	enum store_type store_type;	// The type of write operation
 };
 
