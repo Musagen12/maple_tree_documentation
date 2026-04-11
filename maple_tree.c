@@ -2424,6 +2424,8 @@ static inline void mas_wr_node_walk(struct ma_wr_state *wr_mas)
 	if (unlikely(ma_is_dense(wr_mas->type))) {
 		// "r_min" and "r_max" are set to the same value "mas->index" — representing a single point range since dense nodes map each index directly to a slot with no pivots.
 		wr_mas->r_max = wr_mas->r_min = mas->index;
+
+		// Not sure why
 		mas->offset = mas->index = mas->min;
 		// Returns early since no pivot scanning is needed.
 		return;
@@ -2454,7 +2456,7 @@ static inline void mas_wr_node_walk(struct ma_wr_state *wr_mas)
 	wr_mas->r_max = offset < count ? wr_mas->pivots[offset] : mas->max;
 	// Sets the left boundary(ie the minimum) of the slot
 	wr_mas->r_min = mas_safe_min(mas, wr_mas->pivots, offset);
-	// Stores the found offset in both wr_mas->offset_end and mas->offset — committing the position into both the write state and the main mas.
+	// Stores the found offset in both wr_mas->offset_end(Offset where the write ends) and mas->offset — committing the position into both the write state and the main mas.
 	wr_mas->offset_end = mas->offset = offset;
 }
 
@@ -3649,31 +3651,50 @@ static inline void mas_store_root(struct ma_state *mas, void *entry)
  */
 static bool mas_is_span_wr(struct ma_wr_state *wr_mas)
 {
+	// In internal nodes each slot expands to a child node — going beyond
+    // a slot boundary is automatically a spanning store.
+    // In leaf nodes slots store data directly — a spanning store requires
+    // going beyond the entire node boundary, not just a slot boundary.
+
+
+	// Gets the upper bound of the current slot found by mas_wr_node_walk()
 	unsigned long max = wr_mas->r_max;
+	// Gets the upper bound of the range
 	unsigned long last = wr_mas->mas->last;
+	// Gets the node type
 	enum maple_type type = wr_mas->type;
+	// Gets the entry(ie data to be stored)
 	void *entry = wr_mas->entry;
 
-	/* Contained in this pivot, fast path */
+	// If the write range ends before the slot's upper boundary — the write is entirely within this slot. Not a spanning write
 	if (last < max)
 		return false;
 
+	// If the node is of type leaf
 	if (ma_is_leaf(type)) {
 		max = wr_mas->mas->max;
 		if (last < max)
 			return false;
 	}
 
+	// When the write range ends exactly at max
 	if (last == max) {
 		/*
 		 * The last entry of leaf node cannot be NULL unless it is the
 		 * rightmost node (writing ULONG_MAX), otherwise it spans slots.
 		 */
+
+		// Its not a spanning store if:
+			// entry is non-NULL — a regular store exactly at the boundary is valid
+			// last == ULONG_MAX — writing to the rightmost node which has no right neighbor to span into
 		if (entry || last == ULONG_MAX)
 			return false;
 	}
 
+	// Initiate a tracing function
 	trace_ma_write(TP_FCT, wr_mas->mas, wr_mas->r_max, entry);
+
+	// If every condition fails the store type is spanning 
 	return true;
 }
 
@@ -3685,7 +3706,7 @@ static inline void mas_wr_walk_descend(struct ma_wr_state *wr_mas)
 	wr_mas->type = mte_node_type(wr_mas->mas->node);
 	// Walks though a node and sets the range boundaries(ie r_min and r_max) for the write operation
 	mas_wr_node_walk(wr_mas);
-	// Get the slots based on the node type
+	// Get the slots based on the node type(ie mas->node->slots)
 	wr_mas->slots = ma_slots(wr_mas->node, wr_mas->type);
 }
 
@@ -3714,7 +3735,7 @@ static bool mas_wr_walk(struct ma_wr_state *wr_mas)
 
 	// Loop through the tree
 	while (true) {
-		// It 
+		// It updates the write range and the slots within the wr_mas
 		mas_wr_walk_descend(wr_mas);
 		if (unlikely(mas_is_span_wr(wr_mas)))
 			return false;
@@ -4510,6 +4531,7 @@ static inline void mas_wr_preallocate(struct ma_wr_state *wr_mas, void *entry)
 	// A setup function for the write that manipulates the ma_state and content
 	mas_wr_prealloc_setup(wr_mas);
 
+	// Gets the type of write operation
 	mas->store_type = mas_wr_store_type(wr_mas);
 	mas_prealloc_calc(wr_mas, entry);
 	if (!mas->node_request)

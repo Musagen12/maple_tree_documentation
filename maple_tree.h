@@ -460,7 +460,6 @@ enum maple_status {
 //      ↓
 // perform structural changes
 
-
 struct ma_state {
 	struct maple_tree *tree;	 // Maple tree being operated on
 
@@ -490,7 +489,10 @@ struct ma_state {
 	enum maple_status status;	// This tells the algorithm what stage the traversal is in
 	unsigned char depth;		/* depth of tree descent during write */
 
-	unsigned char offset;  // slot index inside the parent node
+TODO:
+	unsigned char offset;  // slot index(EXPLORE FURTHER THE MEANING OF THIS AND ITS USE)
+
+
 	unsigned char mas_flags; // Various internal behavior flags that modify traversal behaviour
 	unsigned char end;		/* The end of the node */
 	enum store_type store_type;	// The type of write operation
