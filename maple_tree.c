@@ -3710,14 +3710,18 @@ static inline void mas_wr_walk_descend(struct ma_wr_state *wr_mas)
 	wr_mas->slots = ma_slots(wr_mas->node, wr_mas->type);
 }
 
+// Moves mas one level down the tree
 static inline void mas_wr_walk_traverse(struct ma_wr_state *wr_mas)
 {
-	wr_mas->mas->max = wr_mas->r_max;
-	wr_mas->mas->min = wr_mas->r_min;
-	wr_mas->mas->node = wr_mas->content;
-	wr_mas->mas->offset = 0;
-	wr_mas->mas->depth++;
+	// The slot in the parent node's range(r_min-r_max) becomes the current node's range(min-max)
+	wr_mas->mas->max = wr_mas->r_max;  // narrow the range to the found slot's upper boundary
+	wr_mas->mas->min = wr_mas->r_min;  // narrow the range to the found slot's lower boundary
+	wr_mas->mas->node = wr_mas->content;  // move to the child node — content holds the pointer to the next level
+	wr_mas->mas->offset = 0;  // reset offset since we are now at a new node
+	wr_mas->mas->depth++;  // record that we have gone one level deeper
 }
+
+
 /*
  * mas_wr_walk() - Walk the tree for a write.
  * @wr_mas: The maple write state
