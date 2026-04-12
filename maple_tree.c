@@ -3732,8 +3732,12 @@ static inline void mas_wr_walk_traverse(struct ma_wr_state *wr_mas)
 // At each level along that path it checks if the write spans beyond the current node. If it does at any point — stop and return false.
 // If it reaches the leaf without spanning — return true
 
-
-// Verifies if the range is contained in one node or in multiple nodes(ie a spanning store write operation)
+// Walks down the tree from the current node to the target leaf, at each level:
+// - Checking if the write spans beyond the current node (spanning store)
+//   returns false if spanning store detected, true if write fits within a single path
+// - wr_mas->content        : the existing data in the target slot (what is being replaced)
+// - wr_mas->vacant_height  : depth of the lowest node with vacant slots (for potential splits)
+// - wr_mas->sufficient_height: depth of the lowest node with sufficient entries (for rebalancing)
 static bool mas_wr_walk(struct ma_wr_state *wr_mas)
 {
 	// Get the ma_state "mas"
@@ -3764,18 +3768,41 @@ static bool mas_wr_walk(struct ma_wr_state *wr_mas)
 		// Checks if there is empty space in the node
 		if (mas->end < mt_slots[wr_mas->type] - 1)
 			// The height where there is space gets increased
-			wr_mas->vacant_height = mas->depth + 1;
+			// "vacant_height = height of the tree + 1" because we check if the slot has space and if so we increament by 1 since the
+			// slot will expand into a child node which will have the free space
+			wr_mas->vacant_height = mas->depth + 1;  // "wr_mas->vacant_height" - Height of lowest node with free space
 
+
+		// THIS CONDITION IS MEANT TO CHECK SUFFICIENCY IE IF THE MINIMUM NUMBER OF SLOTS IS MET
+		============================================================================================
+
+		// CHECK THE ROOOT FIRST
 		// If the node is a the root
 		if (ma_is_root(mas_mn(mas))) {
 			/* root needs more than 2 entries to be sufficient + 1 */
 			// Because the root needs enough entries to justify the tree's existence as a multi-node structure
 			if (mas->end > 2)
+				// "wr_mas->sufficient_height" - Height of lowest node with min sufficiency + 1 nodes
 
+				// Root        depth = 0
+				//   ↓
+				// Level 2     depth = 1
+				//   ↓
+				// Level 3     depth = 2
+				//   ↓
+				// Leaf        depth = 3
 
-				
+				// wr_mas->sufficient_height = 1;
+				// Is mas->depth + 1 = 0 + 1 = 1
+
 				wr_mas->sufficient_height = 1;
+
+		// CHECK FOR THE REST OF NODES
+
+		// +1 provides a buffer — a node at exactly minimum slots is
+		// borderline and not considered truly sufficient
 		} else if (mas->end > mt_min_slots[wr_mas->type] + 1)
+			// Increament the depth
 			wr_mas->sufficient_height = mas->depth + 1;
 
 		mas_wr_walk_traverse(wr_mas);
