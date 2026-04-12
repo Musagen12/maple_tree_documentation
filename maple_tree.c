@@ -3809,6 +3809,7 @@ static bool mas_wr_walk(struct ma_wr_state *wr_mas)
 			// Increament the depth
 			wr_mas->sufficient_height = mas->depth + 1;
 
+			// Takes us to the next level
 		mas_wr_walk_traverse(wr_mas);
 	}
 
