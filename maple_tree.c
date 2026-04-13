@@ -4245,13 +4245,19 @@ static inline void mas_wr_extend_null(struct ma_wr_state *wr_mas)
 	}
 }
 
-
+// We are setting up the boundary(ie pivot) for the last affected slot
+// The function sets "offset_end"(slot the write range ends in) and "end_piv"(slot's right boundary)
 static inline void mas_wr_end_piv(struct ma_wr_state *wr_mas)
 {
+	// This loop advances "offset_end" forward slot by slot until finding the slot that contains "mas->last" (the write range end)
+	// offset_end < mas->end — safety boundary, never go past the last populated slot
+	// mas->last > pivots[offset_end] — the current slot's pivot is still smaller than mas->last meaning mas->last is in a slot further right
 	while ((wr_mas->offset_end < wr_mas->mas->end) &&
 	       (wr_mas->mas->last > wr_mas->pivots[wr_mas->offset_end]))
 		wr_mas->offset_end++;
 
+	// If "offset_end" is within the node(ie not exceeded "end") set "end_piv" as "pivots[offset_end]".
+	// But if its greater(ie exceeds the node boundary) set it to "max"
 	if (wr_mas->offset_end < wr_mas->mas->end)
 		wr_mas->end_piv = wr_mas->pivots[wr_mas->offset_end];
 	else
