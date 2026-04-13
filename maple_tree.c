@@ -4209,8 +4209,11 @@ static inline void mas_wr_slot_store(struct ma_wr_state *wr_mas)
 	return;
 }
 
+
+
 static inline void mas_wr_extend_null(struct ma_wr_state *wr_mas)
 {
+	// Extract ma_state
 	struct ma_state *mas = wr_mas->mas;
 
 	if (!wr_mas->slots[wr_mas->offset_end]) {
@@ -4552,7 +4555,10 @@ static inline enum store_type mas_wr_store_type(struct ma_wr_state *wr_mas)
 	
 
 	/* At this point, we are at the leaf node that needs to be altered. */
+	// We got here by mas_wr_walk() which moves from the root to the corresponding leaf node updating the wr_mas
 	mas_wr_end_piv(wr_mas);
+
+	// If we don't have a new value to be stored
 	if (!wr_mas->entry)
 		mas_wr_extend_null(wr_mas);
 
