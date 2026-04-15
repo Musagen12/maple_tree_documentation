@@ -4209,8 +4209,7 @@ static inline void mas_wr_slot_store(struct ma_wr_state *wr_mas)
 	return;
 }
 
-
-
+// Checks if null
 static inline void mas_wr_extend_null(struct ma_wr_state *wr_mas)
 {
 	// Extract ma_state
