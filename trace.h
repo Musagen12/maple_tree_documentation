@@ -1,13 +1,12 @@
+// Annottaion for maple tree tracing
+
 #undef TRACE_SYSTEM
 #define TRACE_SYSTEM maple_tree
 
 #if !defined(_TRACE_MM_H) || defined(TRACE_HEADER_MULTI_READ)
 #define _TRACE_MM_H
 
-
 #include <linux/tracepoint.h>
-
-// TRACE_EVENT annotation is done below
 
 struct ma_state;
 
