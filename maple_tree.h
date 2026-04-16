@@ -313,10 +313,6 @@ struct maple_node {
 };
 
 
-
-
-
-
 /*
  * More complicated stores can cause two nodes to become one or three and
  * potentially alter the height of the tree.  Either half of the tree may need
@@ -485,13 +481,11 @@ struct ma_state {
 	struct maple_node *alloc;	/* A single allocated node for fast path writes */
 	unsigned long node_request;	// Number of nodes needed for the operation
 
-
 	enum maple_status status;	// This tells the algorithm what stage the traversal is in
 	unsigned char depth;		/* depth of tree descent during write */
 
 TODO:
 	unsigned char offset;  // slot index(EXPLORE FURTHER THE MEANING OF THIS AND ITS USE)
-
 
 	unsigned char mas_flags; // Various internal behavior flags that modify traversal behaviour
 	unsigned char end;		/* The end of the node */  // index of the last populated slot in the current node
@@ -611,6 +605,7 @@ void *mas_next_range(struct ma_state *mas, unsigned long max);
 
 int mas_empty_area(struct ma_state *mas, unsigned long min, unsigned long max,
 		   unsigned long size);
+
 /*
  * This finds an empty area from the highest address to the lowest.
  * AKA "Topdown" version,
