@@ -4231,14 +4231,20 @@ static inline void mas_wr_extend_null(struct ma_wr_state *wr_mas)
 		mas->last = wr_mas->end_piv;
 	} else {
 		/* Check next slot(s) if we are overwriting the end */
-		if ((mas->last == wr_mas->end_piv) &&
+		if ((mas->last == wr_mas->end_piv) && // We're sitting exactly at the pivot boundary 
 		    (mas->end != wr_mas->offset_end) &&    // We shouldn't be at the end of the node
-		    !wr_mas->slots[wr_mas->offset_end + 1]) {  // The next slot after end of the write
+		    !wr_mas->slots[wr_mas->offset_end + 1]) {  // The next slot after end of the write is NULL
+			// Increament the end of the write to cover this slot
 			wr_mas->offset_end++;
+
+			// If we reach the end of the node
 			if (wr_mas->offset_end == mas->end)
+				// Set the "last" as the node's maximum
 				mas->last = mas->max;
 			else
+				// Set last as the upperbound of the adjacent slot
 				mas->last = wr_mas->pivots[wr_mas->offset_end];
+			// Update the write range's upperbound
 			wr_mas->end_piv = mas->last;
 		}
 	}
@@ -4248,15 +4254,23 @@ static inline void mas_wr_extend_null(struct ma_wr_state *wr_mas)
 	// Checks if the content(ie old data) is empty. Basically the same check as the above condition
 	if (!wr_mas->content) {
 		/* If this one is null, the next and prev are not */
-
+		// The same logic as above applies here(ie there can never be  adjacent NULL slots)
 		mas->index = wr_mas->r_min;
 	} else {
 		/* Check prev slot if we are overwriting the start */
-		if (mas->index == wr_mas->r_min && mas->offset &&
-		    !wr_mas->slots[mas->offset - 1]) {
+		// ""
+		if (mas->index == wr_mas->r_min // check whether the write starts exactly at r_min
+			&& mas->offset // there's a slot before it (offset > 0) ie since we will be looking whether the previous slot is empty
+			&& !wr_mas->slots[mas->offset - 1]) { // Is the previous slot empty
+
+			// Go to the previous slot's offset
 			mas->offset--;
+
+			// We get the beginning of the previous slot and set it as the offset and r_min
 			wr_mas->r_min = mas->index =
 				mas_safe_min(mas, wr_mas->pivots, mas->offset);
+
+			// Set r_max as the pivot of the previous slot that was NULL
 			wr_mas->r_max = wr_mas->pivots[mas->offset];
 		}
 	}
