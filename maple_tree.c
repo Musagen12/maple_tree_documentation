@@ -4215,8 +4215,8 @@ static inline void mas_wr_slot_store(struct ma_wr_state *wr_mas)
 // If two adjacent slots are both NULL they should have been merged into one.
 // Having two adjacent NULLs means the tree is in an invalid state.
 
-// When writing a new value into a maple tree node, this function extends the write range to consume adjacent NULL (empty) slots.
-// This avoids fragmentation — rather than leaving a tiny NULL slot beside the new entry, the write range is stretched to absorb it.
+// The function is called when storing NULLs hence the checks for adjacent NULL entries must be made 
+// in accoradnce to the statements made above
 static inline void mas_wr_extend_null(struct ma_wr_state *wr_mas)
 {
 	// Extract ma_state
@@ -4588,6 +4588,9 @@ static inline enum store_type mas_wr_store_type(struct ma_wr_state *wr_mas)
 
 	// If we don't have a new value to be stored
 	if (!wr_mas->entry)
+		// It's specifically about writing a NULL (deletion/gap). 
+		// When you erase a range in the maple tree by writing NULL, 
+		// you want that NULL to merge with any neighboring NULL slots rather than creating a redundant boundary between two adjacent empty regions.
 		mas_wr_extend_null(wr_mas);
 
 	if ((wr_mas->r_min == mas->index) && (wr_mas->r_max == mas->last))
