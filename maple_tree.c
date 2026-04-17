@@ -4209,20 +4209,31 @@ static inline void mas_wr_slot_store(struct ma_wr_state *wr_mas)
 	return;
 }
 
-// Checks if null
+// NULL slots cannot be adjacent to other NULL slots
+
+// A NULL slot represents an empty range.
+// If two adjacent slots are both NULL they should have been merged into one.
+// Having two adjacent NULLs means the tree is in an invalid state.
+
+// When writing a new value into a maple tree node, this function extends the write range to consume adjacent NULL (empty) slots.
+// This avoids fragmentation — rather than leaving a tiny NULL slot beside the new entry, the write range is stretched to absorb it.
 static inline void mas_wr_extend_null(struct ma_wr_state *wr_mas)
 {
 	// Extract ma_state
 	struct ma_state *mas = wr_mas->mas;
 
+	// Here we are dealing with the upper bound of the write range
+
+	// Checks if the slot at offset_end(last slot to be written to) is empty ie NULL
 	if (!wr_mas->slots[wr_mas->offset_end]) {
 		/* If this one is null, the next and prev are not */
+		// If the last slot is NULL then the next slot is not ie has content
 		mas->last = wr_mas->end_piv;
 	} else {
 		/* Check next slot(s) if we are overwriting the end */
 		if ((mas->last == wr_mas->end_piv) &&
-		    (mas->end != wr_mas->offset_end) &&
-		    !wr_mas->slots[wr_mas->offset_end + 1]) {
+		    (mas->end != wr_mas->offset_end) &&    // We shouldn't be at the end of the node
+		    !wr_mas->slots[wr_mas->offset_end + 1]) {  // The next slot after end of the write
 			wr_mas->offset_end++;
 			if (wr_mas->offset_end == mas->end)
 				mas->last = mas->max;
@@ -4232,8 +4243,12 @@ static inline void mas_wr_extend_null(struct ma_wr_state *wr_mas)
 		}
 	}
 
+	// Here we are dealing with the lower bound of the write range
+
+	// Checks if the content(ie old data) is empty. Basically the same check as the above condition
 	if (!wr_mas->content) {
 		/* If this one is null, the next and prev are not */
+
 		mas->index = wr_mas->r_min;
 	} else {
 		/* Check prev slot if we are overwriting the start */
@@ -4252,7 +4267,7 @@ static inline void mas_wr_extend_null(struct ma_wr_state *wr_mas)
 static inline void mas_wr_end_piv(struct ma_wr_state *wr_mas)
 {
 	// This loop advances "offset_end" forward slot by slot until finding the slot that contains "mas->last" (the write range end)
-	// offset_end < mas->end — safety boundary, never go past the last populated slot
+	// offset_end < mas->end — safety boundary, never go past the end of the node
 	// mas->last > pivots[offset_end] — the current slot's pivot is still smaller than mas->last meaning mas->last is in a slot further right
 	while ((wr_mas->offset_end < wr_mas->mas->end) &&
 	       (wr_mas->mas->last > wr_mas->pivots[wr_mas->offset_end]))
