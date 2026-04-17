@@ -4593,9 +4593,12 @@ static inline enum store_type mas_wr_store_type(struct ma_wr_state *wr_mas)
 		// you want that NULL to merge with any neighboring NULL slots rather than creating a redundant boundary between two adjacent empty regions.
 		mas_wr_extend_null(wr_mas);
 
+	// If the write range fits in exactly in one slot return "wr_exact_fit"
 	if ((wr_mas->r_min == mas->index) && (wr_mas->r_max == mas->last))
 		return wr_exact_fit;
 
+
+	
 	if (unlikely(!mas->index && mas->last == ULONG_MAX))
 		return wr_new_root;
 
