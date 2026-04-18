@@ -4232,7 +4232,7 @@ static inline void mas_wr_extend_null(struct ma_wr_state *wr_mas)
 	} else {
 		/* Check next slot(s) if we are overwriting the end */
 		if ((mas->last == wr_mas->end_piv) && // We're sitting exactly at the pivot boundary 
-		    (mas->end != wr_mas->offset_end) &&    // We shouldn't be at the end of the node
+		    (mas->end != wr_mas->offset_end) &&    // We shouldn't be at the end of the node because the next condition involves adding the offset
 		    !wr_mas->slots[wr_mas->offset_end + 1]) {  // The next slot after end of the write is NULL
 			// Increament the end of the write to cover this slot
 			wr_mas->offset_end++;
@@ -4249,7 +4249,7 @@ static inline void mas_wr_extend_null(struct ma_wr_state *wr_mas)
 		}
 	}
 
-	// Here we are dealing with the lower bound of the write range
+	/* Here we are dealing with the lower bound of the write range */
 
 	// Checks if the content(ie old data) is empty. Basically the same check as the above condition
 	if (!wr_mas->content) {
@@ -4297,7 +4297,9 @@ static inline void mas_wr_end_piv(struct ma_wr_state *wr_mas)
 
 static inline unsigned char mas_wr_new_end(struct ma_wr_state *wr_mas)
 {
+	// Extract the "ma_state" from the "ma_wr_state"
 	struct ma_state *mas = wr_mas->mas;
+	// Increament end by 2 slots, 1 slot is for the new entry and the other is for potential fragmentation
 	unsigned char new_end = mas->end + 2;
 
 	new_end -= wr_mas->offset_end - mas->offset;
@@ -4593,12 +4595,14 @@ static inline enum store_type mas_wr_store_type(struct ma_wr_state *wr_mas)
 		// you want that NULL to merge with any neighboring NULL slots rather than creating a redundant boundary between two adjacent empty regions.
 		mas_wr_extend_null(wr_mas);
 
-	// If the write range fits in exactly in one slot return "wr_exact_fit"
+	// If the write range fits in exactly within the slot boundaries return "wr_exact_fit"
 	if ((wr_mas->r_min == mas->index) && (wr_mas->r_max == mas->last))
 		return wr_exact_fit;
 
+	// If the write covers the whole range(ie [0 - ULONG_MAX]) the whole tree is replaced by a single entry
+	// Resulting in a new root without children
 
-	
+	// The "unlikely" basically means that this is a rare occurence
 	if (unlikely(!mas->index && mas->last == ULONG_MAX))
 		return wr_new_root;
 
