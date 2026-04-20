@@ -4297,11 +4297,11 @@ static inline void mas_wr_end_piv(struct ma_wr_state *wr_mas)
 
 
 
-
+=========================================================================================================================
 // Study this for potential bugs since the function determines the store type based on a simple arithmetic calculation
+=========================================================================================================================
 
-
-// The function returns the number of unaffected slots by the write operation
+// The function returns the index of the node's end after the write.
 static inline unsigned char mas_wr_new_end(struct ma_wr_state *wr_mas)
 {
 	// Extract the "ma_state" from the "ma_wr_state"
@@ -4615,7 +4615,7 @@ static inline enum store_type mas_wr_store_type(struct ma_wr_state *wr_mas)
 	/* At this point, we are at the leaf node that needs to be altered. */
 	// We got here by mas_wr_walk() which moves from the root to the corresponding leaf node updating the wr_mas
 
-	// This updates the end_piv
+	// This updates the end_piv that marks the upper bound of the last slot in the write range
 	mas_wr_end_piv(wr_mas);
 
 	// If we don't have a new value to be stored
@@ -4636,20 +4636,30 @@ static inline enum store_type mas_wr_store_type(struct ma_wr_state *wr_mas)
 	if (unlikely(!mas->index && mas->last == ULONG_MAX))
 		return wr_new_root;
 
+	// Gets the index of the "mas->end"(ie the last slot with data) after the write operation
 	new_end = mas_wr_new_end(wr_mas);
 	/* Potential spanning rebalance collapsing a node */
+
+	// Checks if the node has less slots than the minimum
 	if (new_end < mt_min_slots[wr_mas->type]) {
+		// If so and the node isn't the root node rebalance
 		if (!mte_is_root(mas->node))
-			return  wr_rebalance;
+			return wr_rebalance;
+
+		// Else its just a regular node_store
 		return wr_node_store;
 	}
 
+	// Checks if the node has slots more than the maximum
 	if (new_end >= mt_slots[wr_mas->type])
+		// If so we need to split the node
 		return wr_split_store;
 
+	// If the tree is not in rcu-mode and the write begins at the last populated slot just append
 	if (!mt_in_rcu(mas->tree) && (mas->offset == mas->end))
 		return wr_append;
 
+	// Slot count remains unchanged
 	if ((new_end == mas->end) && (!mt_in_rcu(mas->tree) ||
 		(wr_mas->offset_end - mas->offset == 1)))
 		return wr_slot_store;
