@@ -4301,7 +4301,7 @@ static inline void mas_wr_end_piv(struct ma_wr_state *wr_mas)
 // Study this for potential bugs since the function determines the store type based on a simple arithmetic calculation
 
 
-// The function returns the total slot count the node will have after the write
+// The function returns the number of unaffected slots by the write operation
 static inline unsigned char mas_wr_new_end(struct ma_wr_state *wr_mas)
 {
 	// Extract the "ma_state" from the "ma_wr_state"
@@ -4330,7 +4330,6 @@ static inline unsigned char mas_wr_new_end(struct ma_wr_state *wr_mas)
 	if (wr_mas->end_piv == mas->last)
 		new_end--;
 
-	// Return the number of unaffected slots
 	return new_end;
 }
 
