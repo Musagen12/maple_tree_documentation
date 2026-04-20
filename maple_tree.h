@@ -488,7 +488,7 @@ TODO:
 	unsigned char offset;  // slot index(EXPLORE FURTHER THE MEANING OF THIS AND ITS USE)
 
 	unsigned char mas_flags; // Various internal behavior flags that modify traversal behaviour
-	unsigned char end;		/* The end of the node */  // index of the last populated slot in the current node
+	unsigned char end;		// index of the last populated slot in the current node
 	enum store_type store_type;	// The type of write operation
 };
 
@@ -497,8 +497,7 @@ struct ma_wr_state {
 	struct ma_state *mas;  // Points to the main traversal state
 	struct maple_node *node;	// Decoded mas->node(ie removing the encoded bits)
 
-	// These indicate what portion of the node is being written.
-	// They are narrower than ma_state->index/last, because ma_wr_state focuses on the part of the tree actually being modified.
+	// r_min and r_max are the left and right pivots of the single slot that mas->offset points to — the first slot the write range touches
 	unsigned long r_min;		/* range min */
 	unsigned long r_max;		/* range max */
 

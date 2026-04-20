@@ -4295,22 +4295,51 @@ static inline void mas_wr_end_piv(struct ma_wr_state *wr_mas)
 		wr_mas->end_piv = wr_mas->mas->max;
 }
 
+
+
+
+// Study this for potential bugs since the function determines the store type based on a simple arithmetic calculation
+
+
+
 static inline unsigned char mas_wr_new_end(struct ma_wr_state *wr_mas)
 {
 	// Extract the "ma_state" from the "ma_wr_state"
 	struct ma_state *mas = wr_mas->mas;
 	// Increament end by 2 slots, 1 slot is for the new entry and the other is for potential fragmentation
-	unsigned char new_end = mas->end + 2;
 
+	// For example a node with one slot(probably a root node) of range 100 - 500. You want to write in the range 200 - 300
+	// So we truncate the node into: 100 - 200, 200 - 300, 300 - 500(just an example that ignores the pivots and stuff)
+	// I this scenario we just added 2 new slots(ie this is the reason for the 2 - accounting for truncations on the beginning and end of the write range)
+	unsigned char new_end = mas->end + 2;   // 2 new slots is a worst case scenario, best case is 1 slot
+
+	// offset -  The index of the first slot in the write range
+	// offset_end - The index of the last slot in the write range
+	// so (offset_end - offset) is the slots meant to be modified ie written to
+
+	// new_end = new_end - offset_end - offset
+	// The remaining slots after the write operation
 	new_end -= wr_mas->offset_end - mas->offset;
+	// If the beginning of the write(ie index) is exactly at the beginning of the first slot of the write(ie r_min) subtract 1
+	// Since the left side of the range has no fragmentation(ie no truncated slots)
 	if (wr_mas->r_min == mas->index)
 		new_end--;
 
+	// If the end of the write(ie last) is exactly at the end of the last slot of the write(ie end_piv) subtract 1
+	// Since the right side of the range has no fragmentation(ie no truncated slots)
 	if (wr_mas->end_piv == mas->last)
 		new_end--;
 
+	// Return the number of unaffected slots
 	return new_end;
 }
+
+
+
+
+
+
+
 
 /*
  * mas_wr_append: Attempt to append
@@ -4586,6 +4615,8 @@ static inline enum store_type mas_wr_store_type(struct ma_wr_state *wr_mas)
 
 	/* At this point, we are at the leaf node that needs to be altered. */
 	// We got here by mas_wr_walk() which moves from the root to the corresponding leaf node updating the wr_mas
+
+	// This updates the end_piv
 	mas_wr_end_piv(wr_mas);
 
 	// If we don't have a new value to be stored
