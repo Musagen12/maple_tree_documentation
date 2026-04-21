@@ -510,8 +510,8 @@ struct ma_wr_state {
 	void *entry;			// The new value to be stored
 	void *content;			// The old value
 
-	unsigned char vacant_height;	/* Height of lowest node with free space */
-	unsigned char sufficient_height;/* Height of lowest node with min sufficiency + 1 nodes */
+	unsigned char vacant_height;	 // Height of lowest node with free space ie free/empty slots
+	unsigned char sufficient_height; // Height of lowest node that has enough entries to remain valid even after loosing one
 };
 
 // ma_state

@@ -4543,23 +4543,47 @@ set_content:
  */
 static inline void mas_prealloc_calc(struct ma_wr_state *wr_mas, void *entry)
 {
+	// Extract the ma_state
 	struct ma_state *mas = wr_mas->mas;
+
+	// Extract the tree height(its a flag)
 	unsigned char height = mas_mt_height(mas);
+
+
+	// It represents the worst case scenario for a spanning store
+	===================================================================================================
+	// WHY 3 NODES PER LEVEL?
+	// One node for the new entry, one for the left fragment and the other one for the right fragment
+	===================================================================================================
+	// WHY MULTIPLY WITH THE HEIGHT?
+	// Because spanning stores could affect the whole tree from root to the leaf
+	===================================================================================================
+	// WHY ADD ONE?
+	// It accounts for the root node which may need to be replaced or updated
+	===================================================================================================
 	int ret = height * 3 + 1;
+
+	// The number of levels between the tree's top and the lowest node with vacant slots
 	unsigned char delta = height - wr_mas->vacant_height;
 
 	switch (mas->store_type) {
+	// These store operations don't require any new nodes since they occur in the same node
 	case wr_exact_fit:
 	case wr_append:
 	case wr_slot_store:
 		ret = 0;
 		break;
+
+	// Spanning store are the nost expensive as explained earlier(ie 3 nodes are affected at each level)
+	// The main goal here is to determine the height that nodes will be allocated in
 	case wr_spanning_store:
 		if (wr_mas->sufficient_height < wr_mas->vacant_height)
 			ret = (height - wr_mas->sufficient_height) * 3 + 1;
 		else
 			ret = delta * 3 + 1;
 		break;
+
+
 	case wr_split_store:
 		ret = delta * 2 + 1;
 		break;
@@ -4641,6 +4665,8 @@ static inline enum store_type mas_wr_store_type(struct ma_wr_state *wr_mas)
 
 	// Gets the index of the "mas->end"(ie the last slot with data) after the write operation
 	new_end = mas_wr_new_end(wr_mas);
+
+	
 	/* Potential spanning rebalance collapsing a node */
 
 	// Checks if the node has less slots than the minimum
@@ -4685,7 +4711,8 @@ static inline void mas_wr_preallocate(struct ma_wr_state *wr_mas, void *entry)
 
 	// Determines the type of store operation
 	mas->store_type = mas_wr_store_type(wr_mas);
-	
+
+	// Calculates the number of node required for the operation
 	mas_prealloc_calc(wr_mas, entry);
 	if (!mas->node_request)
 		return;
