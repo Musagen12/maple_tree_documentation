@@ -473,8 +473,8 @@ struct ma_state {
 
 	// For the current node
 	// Describes the range for the current node in-terms of the pivots
-	unsigned long min;		/* The minimum index of this node - implied pivot min */
-	unsigned long max;		/* The maximum index of this node - implied pivot max */
+	unsigned long min;		/* The minimum index of this node - implied pivot min */   // Lower boundary for a node
+	unsigned long max;		/* The maximum index of this node - implied pivot max */   // Upper boundary of a node
 
 	// Used during write operations
 	struct slab_sheaf *sheaf;	/* Allocated nodes for this operation */
@@ -485,7 +485,7 @@ struct ma_state {
 	unsigned char depth;		/* depth of tree descent during write */
 
 TODO:
-	unsigned char offset;  // slot index(EXPLORE FURTHER THE MEANING OF THIS AND ITS USE)
+	unsigned char offset;  // slot index(EXPLORE FURTHER THE MEANING OF THIS AND ITS USE) - "Could be the index of the first slot affected by a write"
 
 	unsigned char mas_flags; // Various internal behavior flags that modify traversal behaviour
 	unsigned char end;		// index of the last populated slot in the current node

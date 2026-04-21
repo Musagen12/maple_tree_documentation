@@ -2425,7 +2425,8 @@ static inline void mas_wr_node_walk(struct ma_wr_state *wr_mas)
 		// "r_min" and "r_max" are set to the same value "mas->index" — representing a single point range since dense nodes map each index directly to a slot with no pivots.
 		wr_mas->r_max = wr_mas->r_min = mas->index;
 
-		// Not sure why
+		// Offset in this context if the index of the first node being operated on
+		// Dense nodes map each index directly to a slot, the node's minimum is both the first valid index and the first valid offset simultaneously
 		mas->offset = mas->index = mas->min;
 		// Returns early since no pivot scanning is needed.
 		return;
@@ -3809,7 +3810,7 @@ static bool mas_wr_walk(struct ma_wr_state *wr_mas)
 			// Increament the depth
 			wr_mas->sufficient_height = mas->depth + 1;
 
-			// Takes us to the next level
+		// Takes us to the next level
 		mas_wr_walk_traverse(wr_mas);
 	}
 
@@ -4285,6 +4286,8 @@ static inline void mas_wr_end_piv(struct ma_wr_state *wr_mas)
 	// mas->last > pivots[offset_end] — the current slot's pivot is still smaller than mas->last meaning mas->last is in a slot further right
 	while ((wr_mas->offset_end < wr_mas->mas->end) &&
 	       (wr_mas->mas->last > wr_mas->pivots[wr_mas->offset_end]))
+
+		// We are increamenting offset_end since in the function mas_wr_node_walk() we set it to offset(ie which is the index of the beginning of the range of operation(index))
 		wr_mas->offset_end++;
 
 	// If "offset_end" is within the node(ie not exceeded "end") set "end_piv" as "pivots[offset_end]".
@@ -4680,8 +4683,9 @@ static inline void mas_wr_preallocate(struct ma_wr_state *wr_mas, void *entry)
 	// A setup function for the write that manipulates the ma_state and content
 	mas_wr_prealloc_setup(wr_mas);
 
-	// Gets the type of write operation
+	// Determines the type of store operation
 	mas->store_type = mas_wr_store_type(wr_mas);
+	
 	mas_prealloc_calc(wr_mas, entry);
 	if (!mas->node_request)
 		return;
