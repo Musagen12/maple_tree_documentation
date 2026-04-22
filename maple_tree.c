@@ -1468,30 +1468,45 @@ out:
  */
 static inline void mas_alloc_nodes(struct ma_state *mas, gfp_t gfp)
 {
+	// If there are no nodes needed exit
 	if (!mas->node_request)
 		return;
 
+	// If only one one node is requested
 	if (mas->node_request == 1) {
+		// If a sheaf exists, use it instead of allocating individually
 		if (mas->sheaf)
 			goto use_sheaf;
 
+		// If mas->alloc already has a node
 		if (mas->alloc)
 			return;
 
-		mas->alloc = mt_alloc_one(gfp);
+		// Allocated a single node
+		mas->alloc = mt_alloc_one(gfp);      // mas->alloc is a single node that was already allocated
+
+		// If the memory isn't allocated
 		if (!mas->alloc)
 			goto error;
 
+		// Reset the node_request since the nodes have already been allocated
 		mas->node_request = 0;
+
+		// Exit the program
 		return;
 	}
 
 use_sheaf:
-	if (unlikely(mas->alloc)) {
+	// If a single node had already been allocated free it since sheaf will handle the allocation
+	// Without this we would waste a lot of memory
+	if (unlikely(mas->alloc)) {  // This is a rare occurence
 		kfree(mas->alloc);
 		mas->alloc = NULL;
 	}
 
+
+
+	// If sheaf exists
 	if (mas->sheaf) {
 		unsigned long refill;
 
@@ -4748,9 +4763,12 @@ static inline void mas_wr_preallocate(struct ma_wr_state *wr_mas, void *entry)
 
 	// Calculates the number of node required for the operation
 	mas_prealloc_calc(wr_mas, entry);
+
+	// Exit if there are no nodes needed for the write operation
 	if (!mas->node_request)
 		return;
 
+	// Allocates the nodes in the maple tree
 	mas_alloc_nodes(mas, GFP_NOWAIT);
 }
 
