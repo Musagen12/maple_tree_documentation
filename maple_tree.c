@@ -4600,7 +4600,7 @@ static inline void mas_prealloc_calc(struct ma_wr_state *wr_mas, void *entry)
 	// Unlike split store, a rebalance moves entries between nodes — taking entries from one node and giving them to another. 
 	// This means a node can potentially lose entries and fall below the minimum slot count.
 
-	// This is done to avoid scenarios where nodes don't meet the minimum required entries
+	// This operation is done to avoid scenarios where nodes don't meet the minimum required entries
 	case wr_rebalance:
 		// If the sufficient height is higher than the vacant height
 		if (wr_mas->sufficient_height < wr_mas->vacant_height)
@@ -4625,7 +4625,8 @@ static inline void mas_prealloc_calc(struct ma_wr_state *wr_mas, void *entry)
 
 	// When storing in the root node
 	case wr_store_root:
-		// If the range isn't [0,0], a new node is neede
+		// If the range isn't [0,0], a new node is needed
+		// This is a common case
 		if (likely((mas->last != 0) || (mas->index != 0)))
 			ret = 1;
 
