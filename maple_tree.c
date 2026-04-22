@@ -4541,6 +4541,7 @@ set_content:
  *
  * Return: Number of nodes required for preallocation.
  */
+// Gets the number of nodes needed 
 static inline void mas_prealloc_calc(struct ma_wr_state *wr_mas, void *entry)
 {
 	// Extract the ma_state
@@ -4563,6 +4564,8 @@ static inline void mas_prealloc_calc(struct ma_wr_state *wr_mas, void *entry)
 	===================================================================================================
 	int ret = height * 3 + 1;
 
+	// So "delta" counts exactly those levels that need splitting — from the leaf up to the vacant node
+
 	// The number of levels between the tree's top and the lowest node with vacant slots
 	unsigned char delta = height - wr_mas->vacant_height;
 
@@ -4574,43 +4577,73 @@ static inline void mas_prealloc_calc(struct ma_wr_state *wr_mas, void *entry)
 		ret = 0;
 		break;
 
-	// Spanning store are the nost expensive as explained earlier(ie 3 nodes are affected at each level)
+	// Spanning store are the most expensive write operation as explained earlier(ie 3 nodes are affected at each level)
 	// The main goal here is to determine the height that nodes will be allocated in
 	case wr_spanning_store:
+		// If the sufficient height is higher than the vacant height
 		if (wr_mas->sufficient_height < wr_mas->vacant_height)
+			// The restructuring needs to go all the way up to the sufficient node
+			// because below it nodes don't have enough entries to survive losing one during the spanning store.
 			ret = (height - wr_mas->sufficient_height) * 3 + 1;
 		else
+			// Use the difference in height and sufficient height
 			ret = delta * 3 + 1;
 		break;
 
-
+	// Split store breaks down a node into two hence " * 2" and " + 1" is for the root
+	// Here we don't care about "sufficient_height" because we are adding new entries hence minimum slot count isn't an issue
 	case wr_split_store:
 		ret = delta * 2 + 1;
 		break;
+
+	// Why rebalance needs sufficient_height
+	// Unlike split store, a rebalance moves entries between nodes — taking entries from one node and giving them to another. 
+	// This means a node can potentially lose entries and fall below the minimum slot count.
+
+	// This is done to avoid scenarios where nodes don't meet the minimum required entries
 	case wr_rebalance:
+		// If the sufficient height is higher than the vacant height
 		if (wr_mas->sufficient_height < wr_mas->vacant_height)
+			// Rebalancing needs to reach all the way up to the sufficient node — nodes below it don't have enough entries to safely give away
 			ret = (height - wr_mas->sufficient_height) * 2 + 1;
 		else
+			// If "vacant_height" is greater than "sufficient_height" move to the vacant node
 			ret = delta * 2 + 1;
 		break;
+
+	// Here we are modifying a node
 	case wr_node_store:
+		// If the tree is in RCU mode a new node is needed since you cannot modify a node in use
+		// If not in RCU mode no new node is needed since the update is done normally
 		ret = mt_in_rcu(mas->tree) ? 1 : 0;
 		break;
+
+	// Here we only need one node since we are replacing only the root
 	case wr_new_root:
 		ret = 1;
 		break;
+
+	// When storing in the root node
 	case wr_store_root:
+		// If the range isn't [0,0], a new node is neede
 		if (likely((mas->last != 0) || (mas->index != 0)))
 			ret = 1;
+
+		// If entry doesn't have an internal marker(ie The botton 2 bits being "10") 
 		else if (((unsigned long) (entry) & 3) == 2)
 			ret = 1;
+
+		// Otherwise return 0
 		else
 			ret = 0;
 		break;
+
+	// If the write operation is invalid raise an error
 	case wr_invalid:
 		WARN_ON_ONCE(1);
 	}
 
+	// Populate the ma_state field
 	mas->node_request = ret;
 }
 
