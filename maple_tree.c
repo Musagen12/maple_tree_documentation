@@ -98,6 +98,11 @@
 #define mas_tree_parent(x) ((unsigned long)(x->tree) | MA_ROOT_PARENT)
 #define ma_mnode_ptr(x) ((struct maple_node *)(x))
 #define ma_enode_ptr(x) ((struct maple_enode *)(x))
+
+// Slab cache for maple tree nodes, allocated via the SLAB allocator.
+// Each maple_node is carved out of pre-allocated memory slabs rather
+// than individual kmalloc() calls, reducing fragmentation and
+// allocation overhead
 static struct kmem_cache *maple_node_cache;
 
 #ifdef CONFIG_DEBUG_MAPLE_TREE
@@ -224,14 +229,17 @@ static void mt_return_sheaf(struct slab_sheaf *sheaf)
 	kmem_cache_return_sheaf(maple_node_cache, GFP_NOWAIT, sheaf);
 }
 
+// Creates and fills a new sheaf
 static struct slab_sheaf *mt_get_sheaf(gfp_t gfp, int count)
 {
 	return kmem_cache_prefill_sheaf(maple_node_cache, gfp, count);
 }
 
+// Refills a pre-existing sheaf from the maple_node_cache
 static int mt_refill_sheaf(gfp_t gfp, struct slab_sheaf **sheaf,
 		unsigned int size)
 {
+	// Returns 0 if successfull
 	return kmem_cache_refill_sheaf(maple_node_cache, gfp, sheaf, size);
 }
 
@@ -1484,10 +1492,10 @@ static inline void mas_alloc_nodes(struct ma_state *mas, gfp_t gfp)
 		if (mas->alloc)
 			return;
 
-		// Allocated a single node
+		// Allocating a single node
 		mas->alloc = mt_alloc_one(gfp);
 
-		// If the memory isn't allocated
+		// If the node isn't allocated
 		if (!mas->alloc)
 			goto error;
 
@@ -1500,38 +1508,49 @@ static inline void mas_alloc_nodes(struct ma_state *mas, gfp_t gfp)
 
 use_sheaf:
 	// If a single node had already been allocated free it since sheaf will handle the allocation
-	// Without this we would waste a lot of memory
-	if (unlikely(mas->alloc)) {  // This is a rare occurence
+	// Without this we would be wasting memory
+	if (unlikely(mas->alloc)) {  // This is a rare occurence due to "unlikely"
+		// Free the single node
 		kfree(mas->alloc);
 		mas->alloc = NULL;
 	}
-
-
 
 	// If sheaf exists
 	if (mas->sheaf) {
 		unsigned long refill;
 
+		// Set "refill" to the number of nodes needed as determined by the function "mas_prealloc_calc()"
 		refill = mas->node_request;
+		// We check if the size of the "sheaf" is greater than or equal to the requested "refill"
 		if (kmem_cache_sheaf_size(mas->sheaf) >= refill) {
+			// If so reset the"node_request" and exit since the allocation is done
 			mas->node_request = 0;
 			return;
 		}
 
+		// Checks if the refill wasn't successfull(ie returned 1)
 		if (mt_refill_sheaf(gfp, &mas->sheaf, refill))
+			// If so thats an error
 			goto error;
 
+		// Reset the "node_request" since the allocation is done
 		mas->node_request = 0;
 		return;
 	}
 
+	// Creates a new sheaf of size "node_request" or more
 	mas->sheaf = mt_get_sheaf(gfp, mas->node_request);
+
+	// Checks if the sheaf creation was successful
 	if (likely(mas->sheaf)) {
+		// If so reset the "node_request" then exit
 		mas->node_request = 0;
 		return;
 	}
 
 error:
+	// set "ma->status" to "ma_error"
+	// Since the memory was exhausted(ENOMEM - error no memory)
 	mas_set_err(mas, -ENOMEM);
 }
 
