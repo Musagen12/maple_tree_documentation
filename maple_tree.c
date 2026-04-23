@@ -1475,15 +1475,17 @@ static inline void mas_alloc_nodes(struct ma_state *mas, gfp_t gfp)
 	// If only one one node is requested
 	if (mas->node_request == 1) {
 		// If a sheaf exists, use it instead of allocating individually
+		// "sheaf" is a collectection of allocated nodes
 		if (mas->sheaf)
 			goto use_sheaf;
 
 		// If mas->alloc already has a node
+		// "alloc" is just a single allocated node
 		if (mas->alloc)
 			return;
 
 		// Allocated a single node
-		mas->alloc = mt_alloc_one(gfp);      // mas->alloc is a single node that was already allocated
+		mas->alloc = mt_alloc_one(gfp);
 
 		// If the memory isn't allocated
 		if (!mas->alloc)
@@ -4745,6 +4747,9 @@ static inline enum store_type mas_wr_store_type(struct ma_wr_state *wr_mas)
 	return wr_node_store;
 }
 
+// GFP(Get Free Pages) flags control the allocator allocates the memory
+
+
 /**
  * mas_wr_preallocate() - Preallocate enough nodes for a store operation
  * @wr_mas: The maple write state
@@ -4769,6 +4774,7 @@ static inline void mas_wr_preallocate(struct ma_wr_state *wr_mas, void *entry)
 		return;
 
 	// Allocates the nodes in the maple tree
+	// gfp_nowait cannot sleep doesn't have emergency memory reserves hence if memory ran out the function fails
 	mas_alloc_nodes(mas, GFP_NOWAIT);
 }
 
