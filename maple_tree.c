@@ -235,7 +235,7 @@ static struct slab_sheaf *mt_get_sheaf(gfp_t gfp, int count)
 	return kmem_cache_prefill_sheaf(maple_node_cache, gfp, count);
 }
 
-// Refills a pre-existing sheaf from the maple_node_cache
+// Refills a pre-existing sheaf using the maple_node_cache
 static int mt_refill_sheaf(gfp_t gfp, struct slab_sheaf **sheaf,
 		unsigned int size)
 {
@@ -1512,6 +1512,7 @@ use_sheaf:
 	if (unlikely(mas->alloc)) {  // This is a rare occurence due to "unlikely"
 		// Free the single node
 		kfree(mas->alloc);
+		// Reset alloc
 		mas->alloc = NULL;
 	}
 
@@ -1523,7 +1524,7 @@ use_sheaf:
 		refill = mas->node_request;
 		// We check if the size of the "sheaf" is greater than or equal to the requested "refill"
 		if (kmem_cache_sheaf_size(mas->sheaf) >= refill) {
-			// If so reset the"node_request" and exit since the allocation is done
+			// If so reset the "node_request" and exit since the allocation is done
 			mas->node_request = 0;
 			return;
 		}
@@ -1533,7 +1534,7 @@ use_sheaf:
 			// If so thats an error
 			goto error;
 
-		// Reset the "node_request" since the allocation is done
+		// Reset the "node_request" since the allocation has been done
 		mas->node_request = 0;
 		return;
 	}
