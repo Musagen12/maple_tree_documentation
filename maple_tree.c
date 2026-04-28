@@ -1536,6 +1536,8 @@ use_sheaf:
 
 		// Reset the "node_request" since the allocation has been done
 		mas->node_request = 0;
+
+		// Exit the function
 		return;
 	}
 
@@ -5964,6 +5966,7 @@ EXPORT_SYMBOL_GPL(mas_store);
 
  // gfp_t is a typedef used to represent memory allocation flags
 
+// Stores entries in the tree
 int mas_store_gfp(struct ma_state *mas, void *entry, gfp_t gfp)
 {
 	// Get the range of operation from the ma_state created by the caller
@@ -5975,6 +5978,7 @@ int mas_store_gfp(struct ma_state *mas, void *entry, gfp_t gfp)
 	int ret = 0;
 
 retry:
+	// Allocates the needed nodes
 	mas_wr_preallocate(&wr_mas, entry);
 	if (unlikely(mas_nomem(mas, gfp))) {
 		if (!entry)
