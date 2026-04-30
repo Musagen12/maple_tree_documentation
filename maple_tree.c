@@ -6697,6 +6697,8 @@ EXPORT_SYMBOL_GPL(mas_erase);
  * @gfp: The GFP_FLAGS to use for allocations
  * Return: true on allocation, false otherwise.
  */
+
+// Checks if there were errors during allocation(OOM), if so tries to allocate the nodes again. Return: true on allocation, false otherwise.
 bool mas_nomem(struct ma_state *mas, gfp_t gfp)
 	__must_hold(mas->tree->ma_lock)   // Indicates that the function requires a lock to be held for it to work
 {
