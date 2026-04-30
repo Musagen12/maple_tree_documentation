@@ -3963,6 +3963,7 @@ static inline void *mtree_lookup_walk(struct ma_state *mas)
 			if (pivots[offset] >= mas->index)
 				break;
 		} while (++offset < end);   // Increament offset first then compare with end(ie ensure that the offset doesn't exceed the size of the node)
+		// We check the "offset" pre-increament since the do while loop usually does an extra unnecessary operation which is a waste of kernel resources
 
 		// Get all the slots
 		slots = ma_slots(node, type);
@@ -5980,6 +5981,7 @@ int mas_store_gfp(struct ma_state *mas, void *entry, gfp_t gfp)
 retry:
 	// Allocates the needed nodes
 	mas_wr_preallocate(&wr_mas, entry);
+	
 	if (unlikely(mas_nomem(mas, gfp))) {
 		if (!entry)
 			__mas_set_range(mas, index, last);
@@ -6696,24 +6698,33 @@ EXPORT_SYMBOL_GPL(mas_erase);
  * Return: true on allocation, false otherwise.
  */
 bool mas_nomem(struct ma_state *mas, gfp_t gfp)
-	__must_hold(mas->tree->ma_lock)   // The function requires an ma_lock to be held for it to work
+	__must_hold(mas->tree->ma_lock)   // Indicates that the function requires a lock to be held for it to work
 {
 	// Checks if mas is actually in an out of memory error state. If not — no memory issue, return false immediately.
 	// This is the common case hence likely()
 	if (likely(mas->node != MA_ERROR(-ENOMEM)))
 		return false;
 
+	// "gfpflags_allow_blocking()" checks if we are allowed to wait for memory to be free(if __GFP_DIRECT_RECLAIM is set)
+
+	// If we are allowed to wait and the tree uses an internal lock
 	if (gfpflags_allow_blocking(gfp) && !mt_external_lock(mas->tree)) {
+		// Drop the tree lock since "mas_alloc_nodes()" can sleep
 		mtree_unlock(mas->tree);
+		// Try and redo the node allocation
 		mas_alloc_nodes(mas, gfp);
+		// Return the lock
 		mtree_lock(mas->tree);
 	} else {
+		// Lock isn't dropped since we are using GFP_ATOMIC flag
 		mas_alloc_nodes(mas, gfp);
 	}
 
+	// If allocation fails exit with "false"
 	if (!mas->sheaf && !mas->alloc)
 		return false;
 
+	// If allocation is successful reset the status and exit with "true"
 	mas->status = ma_start;
 	return true;
 }
