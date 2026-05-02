@@ -239,7 +239,7 @@ static struct slab_sheaf *mt_get_sheaf(gfp_t gfp, int count)
 static int mt_refill_sheaf(gfp_t gfp, struct slab_sheaf **sheaf,
 		unsigned int size)
 {
-	// Returns 0 if successfull
+	// Returns 0 if successfull, otherwise its an error
 	return kmem_cache_refill_sheaf(maple_node_cache, gfp, sheaf, size);
 }
 
@@ -4353,7 +4353,7 @@ static inline unsigned char mas_wr_new_end(struct ma_wr_state *wr_mas)
 
 	// For example a node with one slot(probably a root node) of range 100 - 500. You want to write in the range 200 - 300
 	// So we truncate the node into: 100 - 200, 200 - 300, 300 - 500(just an example that ignores the pivots and stuff)
-	// I this scenario we just added 2 new slots(ie this is the reason for the 2 - accounting for truncations on the beginning and end of the write range)
+	// In this scenario we just added 2 new slots(ie this is the reason for the 2 - accounting for truncations on the beginning and end of the write range)
 	unsigned char new_end = mas->end + 2;   // 2 new slots is a worst case scenario, best case is 1 slot
 
 	// offset -  The index of the first slot in the write range
@@ -4456,6 +4456,7 @@ static void mas_wr_bnode(struct ma_wr_state *wr_mas)
  */
 static inline void mas_wr_store_entry(struct ma_wr_state *wr_mas)
 {
+	// Extract 
 	struct ma_state *mas = wr_mas->mas;
 	unsigned char new_end = mas_wr_new_end(wr_mas);
 
@@ -4740,6 +4741,7 @@ static inline enum store_type mas_wr_store_type(struct ma_wr_state *wr_mas)
 	// Gets the index of the "mas->end"(ie the last slot with data) after the write operation
 	new_end = mas_wr_new_end(wr_mas);
 
+	// "new_end" is used to check the status of the tree after the write operation
 	
 	/* Potential spanning rebalance collapsing a node */
 
@@ -5981,14 +5983,20 @@ int mas_store_gfp(struct ma_state *mas, void *entry, gfp_t gfp)
 retry:
 	// Allocates the needed nodes
 	mas_wr_preallocate(&wr_mas, entry);
-	
+
+	// Checks if there was an error during node allocation, if so it tries to redo the operation
 	if (unlikely(mas_nomem(mas, gfp))) {
+		// If its a NULL
 		if (!entry)
 			__mas_set_range(mas, index, last);
+		// Redo the operation(ie allocating the nodes)
 		goto retry;
 	}
 
+	// Checks if "mas->status == ma_error" which is set if an error occured
+	// The error occurs in "mas_alloc_nodes()" if the unable to allocate one node(ie "mas->alloc") or refill the sheaf(ie "mas->sheaf")
 	if (mas_is_err(mas)) {
+		// Converts the result into an errno
 		ret = xa_err(mas->node);
 		goto out;
 	}
@@ -6711,7 +6719,7 @@ bool mas_nomem(struct ma_state *mas, gfp_t gfp)
 
 	// If we are allowed to wait and the tree uses an internal lock
 	if (gfpflags_allow_blocking(gfp) && !mt_external_lock(mas->tree)) {
-		// Drop the tree lock since "mas_alloc_nodes()" can sleep
+		// Drop the tree lock since "mas_alloc_nodes()" can sleep and it not good for it to sleep while holding the lock
 		mtree_unlock(mas->tree);
 		// Try and redo the node allocation
 		mas_alloc_nodes(mas, gfp);
