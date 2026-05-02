@@ -516,7 +516,7 @@ static __always_inline bool ma_is_root(struct maple_node *node)
 	return ((unsigned long)node->parent & MA_ROOT_PARENT);
 }
 
-// Basically converts the encoded node into a regular node first then checks if its a root
+// Basically converts the encoded node into a regular node first then checks if its a root node
 static __always_inline bool mte_is_root(const struct maple_enode *node)
 {
 	return ma_is_root(mte_to_node(node));
@@ -1954,9 +1954,11 @@ static inline void mas_update_gap(struct ma_state *mas)
 	unsigned long p_gap;
 	unsigned long max_gap;
 
+	// Exit if the isn't an allocation tree since only allocation trees track gaps
 	if (!mt_is_alloc(mas->tree))
 		return;
 
+	// Exit if the node is root
 	if (mte_is_root(mas->node))
 		return;
 
@@ -4356,13 +4358,15 @@ static inline unsigned char mas_wr_new_end(struct ma_wr_state *wr_mas)
 	// In this scenario we just added 2 new slots(ie this is the reason for the 2 - accounting for truncations on the beginning and end of the write range)
 	unsigned char new_end = mas->end + 2;   // 2 new slots is a worst case scenario, best case is 1 slot
 
+
 	// offset -  The index of the first slot in the write range
 	// offset_end - The index of the last slot in the write range
 	// so (offset_end - offset) is the slots meant to be modified ie written to
 
-	// new_end = new_end - offset_end - offset
-	// The remaining slots after the write operation
+	// In expanded form its "new_end = new_end - (offset_end - offset)"
+	// The result is the offset of the new end after the write
 	new_end -= wr_mas->offset_end - mas->offset;
+
 	// If the beginning of the write(ie index) is exactly at the beginning of the first slot of the write(ie r_min) subtract 1
 	// Since the left side of the range has no fragmentation(ie no truncated slots)
 	if (wr_mas->r_min == mas->index)
@@ -4375,12 +4379,6 @@ static inline unsigned char mas_wr_new_end(struct ma_wr_state *wr_mas)
 
 	return new_end;
 }
-
-
-
-
-
-
 
 
 /*
@@ -4454,16 +4452,27 @@ static void mas_wr_bnode(struct ma_wr_state *wr_mas)
  * mas_wr_store_entry() - Internal call to store a value
  * @wr_mas: The maple write state
  */
+// Stores the actual data in the tree
 static inline void mas_wr_store_entry(struct ma_wr_state *wr_mas)
 {
-	// Extract 
+	// Extract ma_state from ma_wr_state
 	struct ma_state *mas = wr_mas->mas;
+
+	// Calculate the new end after the write occures
 	unsigned char new_end = mas_wr_new_end(wr_mas);
 
 	switch (mas->store_type) {
 	case wr_exact_fit:
+		// Assigns the entry to the respective slot at location offset
 		rcu_assign_pointer(wr_mas->slots[mas->offset], wr_mas->entry);
+
+		// XOR(^) selects cases where the values are different
+
+		// entry=NULL, content=non-NULL → slot just became a gap, gaps need tracking
+		// entry=non-NULL, content=NULL → slot just filled a gap, gap tracking needs update
+		// Same nullness → gap state unchanged, skip the update
 		if (!!wr_mas->entry ^ !!wr_mas->content)
+			// Update the gaps if tree is an alloc tree
 			mas_update_gap(mas);
 		break;
 	case wr_append:
