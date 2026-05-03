@@ -1877,6 +1877,7 @@ static inline unsigned long mas_max_gap(struct ma_state *mas)
 	enum maple_type mt;
 	struct maple_node *node;
 
+	// Extracts the nod
 	mt = mte_node_type(mas->node);
 	if (ma_is_leaf(mt))
 		return mas_leaf_max_gap(mas);
@@ -1962,6 +1963,7 @@ static inline void mas_update_gap(struct ma_state *mas)
 	if (mte_is_root(mas->node))
 		return;
 
+	// Finds the largest gap in a non-leaf node
 	max_gap = mas_max_gap(mas);
 
 	pslot = mte_parent_slot(mas->node);
@@ -4452,7 +4454,7 @@ static void mas_wr_bnode(struct ma_wr_state *wr_mas)
  * mas_wr_store_entry() - Internal call to store a value
  * @wr_mas: The maple write state
  */
-// Stores the actual data in the tree
+// Provides paths to the various store types operations
 static inline void mas_wr_store_entry(struct ma_wr_state *wr_mas)
 {
 	// Extract ma_state from ma_wr_state
@@ -5995,10 +5997,13 @@ retry:
 
 	// Checks if there was an error during node allocation, if so it tries to redo the operation
 	if (unlikely(mas_nomem(mas, gfp))) {
-		// If its a NULL
+		// Checks if its a NULL
 		if (!entry)
+			// It ensures that the intended deletion range(since we are replacing content with NULLs) is explicitly set before the re-walk(ie retry)
 			__mas_set_range(mas, index, last);
-		// Redo the operation(ie allocating the nodes)
+
+		// Why retry yet we already allocated the memory in mas_nomem() by calling mas_alloc_nodes()?
+		// Inorder to establish a valid position in the tree since mas_nomem() sets "mas->status = ma_start"
 		goto retry;
 	}
 
