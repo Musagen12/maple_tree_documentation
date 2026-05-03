@@ -96,7 +96,7 @@ struct maple_metadata {
  * the same index.
  */
 
-// Regular nodes displayed in the mentorship session by liam Howlette
+// Regular nodes that were displayed in the linux foundation mentorship session by liam Howlette
 struct maple_range_64 {
 	struct maple_pnode *parent;
 	unsigned long pivot[MAPLE_RANGE64_SLOTS - 1];
@@ -119,7 +119,7 @@ struct maple_range_64 {
  * range.
  */
 
-// Nodes in an allocation tree
+// Node type in an allocation tree
 struct maple_arange_64 {
 	struct maple_pnode *parent;
 	unsigned long pivot[MAPLE_ARANGE64_SLOTS - 1];

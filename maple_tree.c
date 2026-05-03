@@ -508,7 +508,8 @@ static inline bool __maybe_unused mte_has_null(const struct maple_enode *node)
 }
 
 // The function checks whether a node is Root
-// Remember "The node->parent(parent pointer) of the root node has bit 0" as indicate in the .h file
+// Remember "The node->parent(parent pointer) of the root node has bit 0 set" as indicated in the "maple_tree.h" file
+
 // cast parent pointer to integer
 // MA_ROOT_PARENT is 1, so an AND operation returns non-zero as true(bit 0 is set), zero as false(bit 0 isn't set)
 static __always_inline bool ma_is_root(struct maple_node *node)
@@ -1771,23 +1772,44 @@ static unsigned long mas_leaf_max_gap(struct ma_state *mas)
 	unsigned char i;
 	unsigned char max_piv;
 
+	// Extract the node type
 	mt = mte_node_type(mas->node);
+	// Converts the encoded node(maple_enode) into a regular node(maple_node)
 	mn = mas_mn(mas);
+	// Gets all the slots
 	slots = ma_slots(mn, mt);
+	// Initialize the largest gap to 0 in the event that there are no gaps
 	max_gap = 0;
+
+	// If the node type is "maple_dense"
 	if (unlikely(ma_is_dense(mt))) {
 		gap = 0;
+
+		// Loop through all the slots
 		for (i = 0; i < mt_slots[mt]; i++) {
+			// If the slot has content
 			if (slots[i]) {
+				// Check if gap is greater tha max_gap
 				if (gap > max_gap)
+					// if so set max_gap to gap
 					max_gap = gap;
+				// Reset gap since we have reached an occupied slot meaning that the previous gap has ended
 				gap = 0;
+
+			// If the slot is empty
 			} else {
+				// Increament the gap count
 				gap++;
 			}
 		}
+
+		// This is meant for gaps at the tail end of the node
+		// Again check if gap is greater than max_gap 
 		if (gap > max_gap)
+			// If so set max_gap to gap
 			max_gap = gap;
+
+		// Return the max_gap
 		return max_gap;
 	}
 
@@ -1795,11 +1817,16 @@ static unsigned long mas_leaf_max_gap(struct ma_state *mas)
 	 * Check the first implied pivot optimizes the loop below and slot 1 may
 	 * be skipped if there is a gap in slot 0.
 	 */
+	// Extracts a node's pivots if they exist
 	pivots = ma_pivots(mn, mt);
+	// If slot[0] is empty/NULL
 	if (likely(!slots[0])) {
+		// From the beginning of the slot(mas->min + 1) to the end(pivots[0]) to get the gap size
 		max_gap = pivots[0] - mas->min + 1;
+		// + 1 because we are skipping the first node since we have already considered it as a gap
 		i = 2;
 	} else {
+		// Start from the begginning since slot[0] is non-empty
 		i = 1;
 	}
 
@@ -1877,15 +1904,23 @@ static inline unsigned long mas_max_gap(struct ma_state *mas)
 	enum maple_type mt;
 	struct maple_node *node;
 
-	// Extracts the nod
+	// Extracts the node type
 	mt = mte_node_type(mas->node);
+
+	// Check if its a leaf node
 	if (ma_is_leaf(mt))
+		// if so use the seperate function meant for leaf nodes
 		return mas_leaf_max_gap(mas);
 
+	// Converts the encoded node(maple_enode) into a regular node(maple_node)
 	node = mas_mn(mas);
+	// Raise an error if the node type isn't maple_arange_64. This is because the function "ma_meta_gap()" only works for maple_arange_64 node
 	MAS_BUG_ON(mas, mt != maple_arange_64);
+	// Extracts the "offset of the largest gap" from the node's maple metadata
 	offset = ma_meta_gap(node);
+	// Extracts the array of gaps within the node
 	gaps = ma_gaps(node, mt);
+	// Gets the largest gap within the node
 	return gaps[offset];
 }
 
@@ -1955,7 +1990,7 @@ static inline void mas_update_gap(struct ma_state *mas)
 	unsigned long p_gap;
 	unsigned long max_gap;
 
-	// Exit if the isn't an allocation tree since only allocation trees track gaps
+	// Exit if the tree isn't an allocation tree since only allocation trees track gaps
 	if (!mt_is_alloc(mas->tree))
 		return;
 
@@ -4463,11 +4498,15 @@ static inline void mas_wr_store_entry(struct ma_wr_state *wr_mas)
 	// Calculate the new end after the write occures
 	unsigned char new_end = mas_wr_new_end(wr_mas);
 
+	// Categorizing based on the store type
 	switch (mas->store_type) {
 	case wr_exact_fit:
+		// rcu_assign_pointer() assigns a value to an rcu protected pointer
+
 		// Assigns the entry to the respective slot at location offset
 		rcu_assign_pointer(wr_mas->slots[mas->offset], wr_mas->entry);
 
+		// !! in c is called "boolean normalization" where non-zero values are converted to 1 while zero(or NULL) remains zero
 		// XOR(^) selects cases where the values are different
 
 		// entry=NULL, content=non-NULL → slot just became a gap, gaps need tracking
