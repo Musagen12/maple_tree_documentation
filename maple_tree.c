@@ -1762,6 +1762,11 @@ static inline unsigned char mas_data_end(struct ma_state *mas)
  *
  * Return: The maximum gap in the leaf.
  */
+// First we consider the dense nodes since they have no pivots
+// Then check if the first slot is a gap for loop optimization later on
+// Then consider the rightmost node in the tree(ie whose "mas->max == ULONG_MAX")
+// Loop through the node incase all the above scenarios fail to produce the largest gap
+// Return the largest gap
 static unsigned long mas_leaf_max_gap(struct ma_state *mas)
 {
 	enum maple_type mt;
@@ -1813,10 +1818,11 @@ static unsigned long mas_leaf_max_gap(struct ma_state *mas)
 		return max_gap;
 	}
 
-	/*
-	 * Check the first implied pivot optimizes the loop below and slot 1 may
-	 * be skipped if there is a gap in slot 0.
-	 */
+	// The check optimizes the comming loop by checking if the first slot is a gap(is empty) or not
+
+	// Why is the loop counter i starting from 1?
+	// Because we will need the previous slot(ie i -1) at some point. 
+
 	// Extracts a node's pivots if they exist
 	pivots = ma_pivots(mn, mt);
 	// If slot[0] is empty/NULL
@@ -1830,34 +1836,57 @@ static unsigned long mas_leaf_max_gap(struct ma_state *mas)
 		i = 1;
 	}
 
+
 	/* reduce max_piv as the special case is checked before the loop */
+	// We get "index of the last populated slot - 1" inorder to get the largest pivot in the node
 	max_piv = ma_data_end(mn, mt, pivots, mas->max) - 1;
+
 	/*
 	 * Check end implied pivot which can only be a gap on the right most
 	 * node.
 	 */
+
+	// This is a special case the where the rightmost(ie an node whose implied end is ULONG_MAX) node's last slot is empty(ie a gap)
+
+	// "mas->max == ULONG_MAX" we are at the right-most node of the tree meaning that the last slot has no right pivot
+	// "!slots[max_piv + 1]" checks if the last slot is empty
+	// Its "unlikely" since most nodes aren't the rightmost nodes in a tree
 	if (unlikely(mas->max == ULONG_MAX) && !slots[max_piv + 1]) {
+		// Gets the gap
 		gap = ULONG_MAX - pivots[max_piv];
+		// Compares the gap with the max_gap
 		if (gap > max_gap)
+			// If larger set max_gap to gap
 			max_gap = gap;
 
+		// If the max_gap is greater than the entire range covered by all slots the loop would visit
 		if (max_gap > pivots[max_piv] - mas->min)
+			// Return it as the largest gap
 			return max_gap;
 	}
 
+	// Loop through the node
 	for (; i <= max_piv; i++) {
 		/* data == no gap. */
 		if (likely(slots[i]))
 			continue;
 
+		// The slot has no data hence its a gap now
+
+		// Get the previous pivot
 		pstart = pivots[i - 1];
+		// Calculate the size of the gap
 		gap = pivots[i] - pstart;
+		// Compares the gap with the max_gap
 		if (gap > max_gap)
+			// If larger set max_gap to gap
 			max_gap = gap;
 
+		// There can never be two adjacent gaps in a node
 		/* There cannot be two gaps in a row. */
 		i++;
 	}
+	// Return the max_gap
 	return max_gap;
 }
 
@@ -4296,7 +4325,7 @@ static inline void mas_wr_slot_store(struct ma_wr_state *wr_mas)
 // Having two adjacent NULLs means the tree is in an invalid state.
 
 // The function is called when storing NULLs hence the checks for adjacent NULL entries must be made 
-// in accoradnce to the statements made above
+// in accoradance to the statements made above
 static inline void mas_wr_extend_null(struct ma_wr_state *wr_mas)
 {
 	// Extract ma_state
