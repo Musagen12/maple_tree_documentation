@@ -2040,8 +2040,10 @@ static inline void mas_update_gap(struct ma_state *mas)
 
 	// Finds the largest gap in a non-leaf node
 	max_gap = mas_max_gap(mas);
-
+	// Get the slot in the parent node where the node resides
 	pslot = mte_parent_slot(mas->node);
+
+	
 	p_gap = ma_gaps(mte_parent(mas->node),
 			mas_parent_type(mas, mas->node))[pslot];
 
