@@ -1762,11 +1762,22 @@ static inline unsigned char mas_data_end(struct ma_state *mas)
  *
  * Return: The maximum gap in the leaf.
  */
-// First we consider the dense nodes since they have no pivots
-// Then check if the first slot is a gap for loop optimization later on
-// Then consider the rightmost node in the tree(ie whose "mas->max == ULONG_MAX")
-// Loop through the node incase all the above scenarios fail to produce the largest gap
-// Return the largest gap
+// dense node?
+//     → count empty slots directly, return
+
+// non-dense:
+//     slot[0] empty?
+//         → compute manually (no left pivot)
+    
+//     mas->max == ULONG_MAX && last slot empty?
+//         → compute manually (no right pivot)
+//         → can we skip the loop entirely?
+//             → yes: return early
+    
+//     loop [i .. max_piv]
+//         → handle all interior slots (both pivots exist)
+    
+//     return max_gap
 static unsigned long mas_leaf_max_gap(struct ma_state *mas)
 {
 	enum maple_type mt;
