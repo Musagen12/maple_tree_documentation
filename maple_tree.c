@@ -1182,13 +1182,11 @@ static inline unsigned char ma_meta_gap(struct maple_node *mn)
  * @mt: The maple node type
  * @offset: The location of the largest gap.
  */
-// Setting the largest gap in the node
 static inline void ma_set_meta_gap(struct maple_node *mn, enum maple_type mt,
 				   unsigned char offset)
 {
 
 	struct maple_metadata *meta = ma_meta(mn, mt);
-
 	meta->gap = offset;
 }
 
@@ -1934,7 +1932,9 @@ ma_max_gap(struct maple_node *node, unsigned long *gaps, enum maple_type mt,
 	unsigned char offset, i;
 	unsigned long max_gap = 0;
 
+	// Set the counter to the end of data in the node
 	i = offset = ma_meta_end(node, mt);
+	// Here we loop through the "gaps" array looking for the largest gap and its offset
 	do {
 		if (gaps[i] > max_gap) {
 			max_gap = gaps[i];
@@ -1942,6 +1942,7 @@ ma_max_gap(struct maple_node *node, unsigned long *gaps, enum maple_type mt,
 		}
 	} while (i--);
 
+	// Stores the location of the gap
 	*off = offset;
 	return max_gap;
 }
@@ -1988,7 +1989,7 @@ static inline unsigned long mas_max_gap(struct ma_state *mas)
  * Set the parent gap then continue to set the gap upwards, using the metadata
  * of the parent to see if it is necessary to check the node above.
  */
-static inline void mas_parent_gap(struct ma_state *mas, unsigned char offset,
+static inline void (struct ma_state *mas, unsigned char offset,
 		unsigned long new)
 {
 	unsigned long meta_gap = 0;
@@ -2014,24 +2015,29 @@ ascend:
 	meta_offset = ma_meta_gap(pnode);
 	// Get the size of the largest gap in the node
 	meta_gap = pgaps[meta_offset];
-	// Set the new value into the gaps array
+	// Write the new gap value into the parent's gaps array at the slot that corresponds to the current node
 	pgaps[offset] = new;
 
 	// If the old and new values are similar exit
 	if (meta_gap == new)
 		return;
 
-
+	// If the "offset" of the updated gap isn't same as the offset of the largest gap as indicated in the "maple_metadata"
 	if (offset != meta_offset) {
+		// If the largest gap in the node is greater than the new gap exit since no more updates are needed
 		if (meta_gap > new)
 			return;
 
+		// If the new gap is larger than the older largest gap update the offset inside of the "maple_metadata"
 		ma_set_meta_gap(pnode, pmt, offset);
+
+	// We updated the slot that was the largest gap(offset == meta_offset) and the new value is smaller hence we need to scan through the gaps to find the largest gap
 	} else if (new < meta_gap) {
 		new = ma_max_gap(pnode, pgaps, pmt, &meta_offset);
 		ma_set_meta_gap(pnode, pmt, meta_offset);
 	}
 
+	// Exit after operating on the root node
 	if (ma_is_root(pnode))
 		return;
 
