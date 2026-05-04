@@ -730,7 +730,7 @@ void mas_set_parent(struct ma_state *mas, struct maple_enode *enode,
 static __always_inline
 unsigned int mte_parent_slot(const struct maple_enode *enode)
 {
-	// cast the parent pointer to an integer so we can extract embedded metadata bits
+	// Type cast the parent pointer to an integer so we can extract embedded metadata bits
 	unsigned long val = (unsigned long)mte_to_node(enode)->parent;
 
 	// Checks the parent's root flag
@@ -1803,7 +1803,7 @@ static unsigned long mas_leaf_max_gap(struct ma_state *mas)
 
 		// Loop through all the slots
 		for (i = 0; i < mt_slots[mt]; i++) {
-			// If the slot has content
+			// If the slot has data
 			if (slots[i]) {
 				// Check if gap is greater tha max_gap
 				if (gap > max_gap)
@@ -1840,10 +1840,10 @@ static unsigned long mas_leaf_max_gap(struct ma_state *mas)
 	if (likely(!slots[0])) {
 		// From the beginning of the slot(mas->min + 1) to the end(pivots[0]) to get the gap size
 		max_gap = pivots[0] - mas->min + 1;
-		// + 1 because we are skipping the first node since we have already considered it as a gap
+		// We start from slot[2] because slot[1] can not be empty(ie There can never be 2 adjacent empty slots)
 		i = 2;
 	} else {
-		// Start from the begginning since slot[0] is non-empty
+		// Start from slot[1] since we already know that slot[0] has data
 		i = 1;
 	}
 
@@ -1860,9 +1860,24 @@ static unsigned long mas_leaf_max_gap(struct ma_state *mas)
 	// This is a special case the where the rightmost(ie an node whose implied end is ULONG_MAX) node's last slot is empty(ie a gap)
 
 	// "mas->max == ULONG_MAX" we are at the right-most node of the tree meaning that the last slot has no right pivot
-	// "!slots[max_piv + 1]" checks if the last slot is empty
+	// "!slots[max_piv + 1]" checks if the node's last slot is empty
 	// Its "unlikely" since most nodes aren't the rightmost nodes in a tree
 	if (unlikely(mas->max == ULONG_MAX) && !slots[max_piv + 1]) {
+		// For any inclusive range [a, b]:
+		// size = b - a + 1
+		// Example:
+		// [3, 5] → 3, 4, 5 → size = 3
+		// 5 - 3 + 1 = 3
+
+		// Applied to the last slot
+		// last slot = [pivots[max_piv]+1 ... ULONG_MAX]
+		//                      a                 b
+
+		// size = b - a + 1
+    	// = ULONG_MAX - (pivots[max_piv]+1) + 1
+    	// = ULONG_MAX - pivots[max_piv] - 1 + 1
+    	// = ULONG_MAX - pivots[max_piv]
+
 		// Gets the gap
 		gap = ULONG_MAX - pivots[max_piv];
 		// Compares the gap with the max_gap
@@ -1882,7 +1897,7 @@ static unsigned long mas_leaf_max_gap(struct ma_state *mas)
 		if (likely(slots[i]))
 			continue;
 
-		// The slot has no data hence its a gap now
+		// The slot has no data hence its a gap
 
 		// Get the previous pivot
 		pstart = pivots[i - 1];
@@ -1954,9 +1969,9 @@ static inline unsigned long mas_max_gap(struct ma_state *mas)
 
 	// Converts the encoded node(maple_enode) into a regular node(maple_node)
 	node = mas_mn(mas);
-	// Raise an error if the node type isn't maple_arange_64. This is because the function "ma_meta_gap()" only works for maple_arange_64 node
+	// Raise an error if the node type isn't maple_arange_64. This is because the function "ma_meta_gap()" only works for "maple_arange_64" nodes
 	MAS_BUG_ON(mas, mt != maple_arange_64);
-	// Extracts the "offset of the largest gap" from the node's maple metadata
+	// Extracts the "offset of the largest gap" from the node's maple_metadata
 	offset = ma_meta_gap(node);
 	// Extracts the array of gaps within the node
 	gaps = ma_gaps(node, mt);
