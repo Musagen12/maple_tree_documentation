@@ -124,7 +124,7 @@ struct maple_arange_64 {
 	struct maple_pnode *parent;
 	unsigned long pivot[MAPLE_ARANGE64_SLOTS - 1];
 	void __rcu *slot[MAPLE_ARANGE64_SLOTS];
-	unsigned long gap[MAPLE_ARANGE64_SLOTS];  // Records the largest NULL range available in each subtree
+	unsigned long gap[MAPLE_ARANGE64_SLOTS];  // Records the largest NULL range(ie gaps) available in each subtree
 	struct maple_metadata meta;    // maple_metadata must always exist in maple_arange64 nodes
 };
 

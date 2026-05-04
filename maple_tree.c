@@ -1840,7 +1840,7 @@ static unsigned long mas_leaf_max_gap(struct ma_state *mas)
 	if (likely(!slots[0])) {
 		// From the beginning of the slot(mas->min + 1) to the end(pivots[0]) to get the gap size
 		max_gap = pivots[0] - mas->min + 1;
-		// We start from slot[2] because slot[1] can not be empty(ie There can never be 2 adjacent empty slots)
+		// We start from slot[2] because slot[1] can not be empty(ie There can never be 2 adjacent em)
 		i = 2;
 	} else {
 		// Start from slot[1] since we already know that slot[0] has data
@@ -1897,7 +1897,7 @@ static unsigned long mas_leaf_max_gap(struct ma_state *mas)
 		if (likely(slots[i]))
 			continue;
 
-		// The slot has no data hence its a gap
+		// The slot has no data hence its a gap now
 
 		// Get the previous pivot
 		pstart = pivots[i - 1];
@@ -1998,20 +1998,29 @@ static inline void mas_parent_gap(struct ma_state *mas, unsigned char offset,
 	unsigned char meta_offset;
 	enum maple_type pmt;
 
+	// Gets the parent "maple_node"
 	pnode = mte_parent(mas->node);
+    // Gets the parent node type
 	pmt = mas_parent_type(mas, mas->node);
+	// Encodes the maple_type into the maple_node
 	penode = mt_mk_node(pnode, pmt);
+	// Get the array of largest gaps within the parent node
 	pgaps = ma_gaps(pnode, pmt);
 
 ascend:
+	// Raise an error if the maple node isn't of type "maple_arange_64"
 	MAS_BUG_ON(mas, pmt != maple_arange_64);
+	// Extract the offset of the largest gap in the node
 	meta_offset = ma_meta_gap(pnode);
+	// Get the size of the largest gap in the node
 	meta_gap = pgaps[meta_offset];
-
+	// Set the new value into the gaps array
 	pgaps[offset] = new;
 
+	// If the old and new values are similar exit
 	if (meta_gap == new)
 		return;
+
 
 	if (offset != meta_offset) {
 		if (meta_gap > new)
@@ -2058,11 +2067,12 @@ static inline void mas_update_gap(struct ma_state *mas)
 	// Get the slot in the parent node where the node resides
 	pslot = mte_parent_slot(mas->node);
 
-	
-	p_gap = ma_gaps(mte_parent(mas->node),
-			mas_parent_type(mas, mas->node))[pslot];
+	// Gets the gap value for the slots that the node resides in
+	p_gap = ma_gaps(mte_parent(mas->node), mas_parent_type(mas, mas->node))[pslot];
 
+	// If the previous gap isn't equal to the new gap
 	if (p_gap != max_gap)
+		// Update the gaps up the tree till we reach the root
 		mas_parent_gap(mas, pslot, max_gap);
 }
 
