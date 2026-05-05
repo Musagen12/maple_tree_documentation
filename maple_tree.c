@@ -1925,6 +1925,8 @@ static unsigned long mas_leaf_max_gap(struct ma_state *mas)
  *
  * Return: The maximum gap value
  */
+
+// Loops through the "gaps" array looking for the greatest gap whilst also tracking its index
 static inline unsigned long
 ma_max_gap(struct maple_node *node, unsigned long *gaps, enum maple_type mt,
 	    unsigned char *off)
@@ -1936,8 +1938,11 @@ ma_max_gap(struct maple_node *node, unsigned long *gaps, enum maple_type mt,
 	i = offset = ma_meta_end(node, mt);
 	// Here we loop through the "gaps" array looking for the largest gap and its offset
 	do {
+		// If the current gap is greater than the max gap
 		if (gaps[i] > max_gap) {
+			// Update the max_gap
 			max_gap = gaps[i];
+			// Update offset to track the largest gap
 			offset = i;
 		}
 	} while (i--);
@@ -1989,7 +1994,7 @@ static inline unsigned long mas_max_gap(struct ma_state *mas)
  * Set the parent gap then continue to set the gap upwards, using the metadata
  * of the parent to see if it is necessary to check the node above.
  */
-static inline void (struct ma_state *mas, unsigned char offset,
+static inline void mas_parent_gap(struct ma_state *mas, unsigned char offset,
 		unsigned long new)
 {
 	unsigned long meta_gap = 0;
