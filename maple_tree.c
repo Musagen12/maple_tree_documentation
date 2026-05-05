@@ -2013,6 +2013,7 @@ static inline void mas_parent_gap(struct ma_state *mas, unsigned char offset,
 	// Get the array of largest gaps within the parent node
 	pgaps = ma_gaps(pnode, pmt);
 
+// This is sort of a loop that updates gaps(If neccessary) upwards until the root node is reached
 ascend:
 	// Raise an error if the maple node isn't of type "maple_arange_64"
 	MAS_BUG_ON(mas, pmt != maple_arange_64);
@@ -2038,7 +2039,9 @@ ascend:
 
 	// We updated the slot that was the largest gap(offset == meta_offset) and the new value is smaller hence we need to scan through the gaps to find the largest gap
 	} else if (new < meta_gap) {
+		// Finds the new largest gap within the node and update "meta_offset" pointer with the new largest gap's offset
 		new = ma_max_gap(pnode, pgaps, pmt, &meta_offset);
+		// Update "maple_metadata->gap" with the new offset
 		ma_set_meta_gap(pnode, pmt, meta_offset);
 	}
 
@@ -2083,7 +2086,7 @@ static inline void mas_update_gap(struct ma_state *mas)
 
 	// If the previous gap isn't equal to the new gap
 	if (p_gap != max_gap)
-		// Update the gaps up the tree till we reach the root
+		// Update the gaps up the tree till we reach the root or don't have to update the gaps
 		mas_parent_gap(mas, pslot, max_gap);
 }
 
