@@ -4511,17 +4511,25 @@ static inline unsigned char mas_wr_new_end(struct ma_wr_state *wr_mas)
 static inline void mas_wr_append(struct ma_wr_state *wr_mas,
 		unsigned char new_end)
 {
+	// Extract the ma_state from ma_wr_state
 	struct ma_state *mas = wr_mas->mas;
 	void __rcu **slots;
+	// Index of the last populated slot
 	unsigned char end = mas->end;
 
+	// If the new_end is less than the maximum number of pivots set the "maple_metadata"
 	if (new_end < mt_pivots[wr_mas->type]) {
+		// Don't know why it was included
 		wr_mas->pivots[new_end] = wr_mas->pivots[end];
+		// Set the maple_metadata with the new_end
 		ma_set_meta(wr_mas->node, wr_mas->type, 0, new_end);
 	}
 
+	// Extract the respective slots
 	slots = wr_mas->slots;
+	// We only need one slot
 	if (new_end == end + 1) {
+		// Does the write consume the slot's ceiling leaving nothing behind
 		if (mas->last == wr_mas->r_max) {
 			/* Append to end of range */
 			rcu_assign_pointer(slots[new_end], wr_mas->entry);
@@ -4533,6 +4541,7 @@ static inline void mas_wr_append(struct ma_wr_state *wr_mas,
 			wr_mas->pivots[end] = mas->last;
 			rcu_assign_pointer(slots[end], wr_mas->entry);
 		}
+	// We need more than one slot
 	} else {
 		/* Append to the range without touching any boundaries. */
 		rcu_assign_pointer(slots[new_end], wr_mas->content);
@@ -4597,6 +4606,8 @@ static inline void mas_wr_store_entry(struct ma_wr_state *wr_mas)
 			// Update the gaps if tree is an alloc tree
 			mas_update_gap(mas);
 		break;
+
+		
 	case wr_append:
 		mas_wr_append(wr_mas, new_end);
 		break;

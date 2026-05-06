@@ -484,7 +484,7 @@ struct ma_state {
 	enum maple_status status;	// This tells the algorithm what stage the traversal is in
 	unsigned char depth;		/* depth of tree descent during write */
 
-TODO:
+// TODO:
 	unsigned char offset;  // slot index(EXPLORE FURTHER THE MEANING OF THIS AND ITS USE) - "Could be the index of the first slot affected by a write"
 
 	unsigned char mas_flags; // Various internal behavior flags that modify traversal behaviour
