@@ -4519,7 +4519,7 @@ static inline void mas_wr_append(struct ma_wr_state *wr_mas,
 
 	// If the new_end is less than the maximum number of pivots set the "maple_metadata"
 	if (new_end < mt_pivots[wr_mas->type]) {
-		// Don't know why it was included
+		// We are setting the pivot
 		wr_mas->pivots[new_end] = wr_mas->pivots[end];
 		// Set the maple_metadata with the new_end
 		ma_set_meta(wr_mas->node, wr_mas->type, 0, new_end);
@@ -4532,6 +4532,7 @@ static inline void mas_wr_append(struct ma_wr_state *wr_mas,
 		// Does the write consume the slot's ceiling leaving nothing behind
 		if (mas->last == wr_mas->r_max) {
 			/* Append to end of range */
+			// Store the entry
 			rcu_assign_pointer(slots[new_end], wr_mas->entry);
 			wr_mas->pivots[end] = mas->index - 1;
 			mas->offset = new_end;

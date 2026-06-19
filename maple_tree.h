@@ -8,6 +8,10 @@
  *              Matthew Wilcox <willy@infradead.org>
  */
 
+
+// Annotation focuses on 64 bit architecture
+
+
 #include <linux/kernel.h>
 #include <linux/rcupdate.h>
 #include <linux/spinlock.h>
@@ -54,15 +58,11 @@
  *
  *  Node types
  *   0b??1 = Root
- *   0b?00 = 16 bit nodes
- *   0b010 = 32 bit nodes
  *   0b110 = 64 bit nodes
  *
  *  Slot size and location in the parent pointer:
  *   type  : slot location
  *   0b??1 : Root
- *   0b?00 : 16 bit values, type in 0-1, slot in 2-6
- *   0b010 : 32 bit values, type in 0-2, slot in 3-6
  *   0b110 : 64 bit values, type in 0-2, slot in 3-6
  */
 
