@@ -99,10 +99,6 @@
 #define ma_mnode_ptr(x) ((struct maple_node *)(x))
 #define ma_enode_ptr(x) ((struct maple_enode *)(x))
 
-// Slab cache for maple tree nodes, allocated via the SLAB allocator.
-// Each maple_node is carved out of pre-allocated memory slabs rather
-// than individual kmalloc() calls, reducing fragmentation and
-// allocation overhead
 static struct kmem_cache *maple_node_cache;
 
 #ifdef CONFIG_DEBUG_MAPLE_TREE
@@ -473,7 +469,7 @@ static inline void *mte_mk_root(const struct maple_enode *node)
 
 // The function is used to set the second bit to 0 since ~MAPLE_ROOT_NODE is 01
 // When you AND 1 and 0 its 0
-// It basically removes the root tag making the node regualar
+// It basically removes the tagging(ie from 0b??10 to 0b??00)
 static inline void *mte_safe_root(const struct maple_enode *node)
 {
 	return (void *)((unsigned long)node & ~MAPLE_ROOT_NODE);
@@ -1612,17 +1608,17 @@ retry:
 		// Resets the depth and covers all three cases
 		mas->depth = 0;
 
-		// We get the root node by mas->tree->root
+		// We get the value stored in the root pointer(ie mas->tree->root)
 		root = mas_root(mas);
-		/* Tree with nodes */
+		/* Tree with nodes */6
 
-		// xa_is_node() is an xarray function that verifies if "root" is a nodes.
+		// xa_is_node() is an xarray function that verifies if "root" is a node.
 		// This is done by:
 			// - xa_is_internal(entry)  →  low 2 bits == 10 (ie 2 in decimal). It checks if its an internal entry
 				// This based on the comment:
 				/*  
 				    To optimise for the page cache, an entry which ends in '00',
-					'01' or '11' is stored in the root, but an entry which ends in '10' will be
+					'01' or '11' is stored in the root pointer, but an entry which ends in '10' will be
 					stored in a node
 				*/
 
@@ -1638,7 +1634,7 @@ retry:
 			// This function converts the 10 to 00 clearing the root encoding ie bit 1
 			mas->node = mte_safe_root(root);
 			mas->offset = 0;
-			// Checks whether the node we just got is dead
+			// Checks whether the node we just got is dead if so we retry
 			if (mte_dead_node(mas->node))
 				goto retry;
 
@@ -1668,7 +1664,7 @@ retry:
 		if (mas->index > 0)    // If someone tries to access a value in an offset greater than 0 return a NULL since that is not possible
 			return NULL;
 
-		// Return "root" ie the value stored
+		// Return "root" ie the value stored in the root pointer since all other scenarios return a null
 		return root;
 	}
 
@@ -6885,8 +6881,13 @@ bool mas_nomem(struct ma_state *mas, gfp_t gfp)
 	return true;
 }
 
+// Creates a slab cache for maple tree nodes, allocated via the SLAB allocator.
+// Each maple_node is carved out of pre-allocated memory slabs rather
+// than individual kmalloc() calls, reducing fragmentation and
+// allocation overhead
 void __init maple_tree_init(void)
 {
+	// Creates the arguments to be passed
 	struct kmem_cache_args args = {
 		.align  = sizeof(struct maple_node),
 		.sheaf_capacity = 32,

@@ -1,4 +1,4 @@
-// Annottaion for maple tree tracing
+// Annotation for maple tree tracing located in "/include/trace/events/maple_tree.h"
 
 #undef TRACE_SYSTEM
 #define TRACE_SYSTEM maple_tree
