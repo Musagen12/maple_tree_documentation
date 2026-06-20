@@ -4062,7 +4062,9 @@ static inline void *mtree_lookup_walk(struct ma_state *mas)
 	unsigned char end;
 
 	// Get the node from the ma_state
+	// Based on the calling function, "next" is the root node
 	next = mas->node;
+	// Loops through the tree
 	do {
 		// Remove the encoding
 		node = mte_to_node(next);
@@ -4073,6 +4075,7 @@ static inline void *mtree_lookup_walk(struct ma_state *mas)
 		// Get the largest pivot
 		end = mt_pivots[type];
 		offset = 0;
+		// Loops through the node
 		do {
 			// Check if data(ie mas->index) is located in slot[offset].
 			// This is done by comparing with pivots[offset] as shown below 
@@ -4083,13 +4086,13 @@ static inline void *mtree_lookup_walk(struct ma_state *mas)
 
 		// Get all the slots
 		slots = ma_slots(node, type);
-		// Extract the next node from the slot of index offset
+		// Extract the pointer to the next node from the slot of index offset
 		next = mt_slot(mas->tree, slots, offset);
 
 		// Check whether the node is dead
 		if (unlikely(ma_dead_node(node)))
 			goto dead_node;
-	} while (!ma_is_leaf(type)); // Stop after getting to the leaf node
+	} while (!ma_is_leaf(type)); // Stop after getting to the leaf node since that means we have reached the bottom of the tree
 
 	// Returns the contents of the repective leaf node
 	return (void *)next;
