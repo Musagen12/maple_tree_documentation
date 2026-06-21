@@ -6942,7 +6942,7 @@ retry:
 		goto unlock;
 	}
 
-	// If the tree has nodes
+	// At this point the tree has nodes
 	// Traverse the tree looking for index
 	entry = mtree_lookup_walk(&mas);
 
@@ -6958,10 +6958,10 @@ unlock:
 			"nothing is stored at this index"       →  entry == NULL
 			"user explicitly stored NULL here"      →  entry == NULL  ← same thing!
 
-		You can't, if you just use raw NULL. So the tree uses a special sentinel:
+		You can't, if you just use raw NULL. So the tree uses a special value:
 			#define XA_ZERO_ENTRY    xa_mk_internal(257)
 			```
-			This is a small internal value with `10` in its low bits — it will never be a real user pointer or a real node. It means **"the user deliberately stored NULL here"**.
+			This is a small internal value with `10` in its low bits — it will never be a real user pointer or a real node. It means "the user deliberately stored NULL here".
 			## So the tree internally sees two different things:
 			```
 			slot is empty          →  raw NULL        (nothing ever stored)
@@ -7080,26 +7080,39 @@ EXPORT_SYMBOL(mtree_store);
 int mtree_insert_range(struct maple_tree *mt, unsigned long first,
 		unsigned long last, void *entry, gfp_t gfp)
 {
+	// Initialize the ma_state
 	MA_STATE(ms, mt, first, last);
 	int ret = 0;
 
+	// Checks if the entry can be stored using the normal API. If not return the "invalid value" error
 	if (WARN_ON_ONCE(xa_is_advanced(entry)))
 		return -EINVAL;
 
+	// If the beginning of the renge is larger than the end return the "invalid value" error
+	// This is means that the range is malformed since the beginning is smaller than the end
 	if (first > last)
 		return -EINVAL;
 
+	// Lock the tree to avoid concurrent updates
 	mtree_lock(mt);
 retry:
+	// Inserts the value into the given range
 	mas_insert(&ms, entry);
+	// Checks if there was an "ENOMEM" error that occured during the allocation. If so memory is refilled
 	if (mas_nomem(&ms, gfp))
+		// Redo the insertion operation
 		goto retry;
 
+	// Release the lock allowing other writters to update it
 	mtree_unlock(mt);
+	// Checks if the mas->status is "ma_error" indicating an error occured
 	if (mas_is_err(&ms))
+		// If an error occurs ret is set into a negative error number
 		ret = xa_err(ms.node);
 
+	// Destroys the ma_state
 	mas_destroy(&ms);
+	// Either return 0 or an error number based on your success
 	return ret;
 }
 EXPORT_SYMBOL(mtree_insert_range);
@@ -7117,6 +7130,7 @@ EXPORT_SYMBOL(mtree_insert_range);
 int mtree_insert(struct maple_tree *mt, unsigned long index, void *entry,
 		 gfp_t gfp)
 {
+	// Calls a function that stores an entry ranges but in this case the range is "index-index" since its a single value
 	return mtree_insert_range(mt, index, index, entry, gfp);
 }
 EXPORT_SYMBOL(mtree_insert);
