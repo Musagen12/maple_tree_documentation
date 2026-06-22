@@ -4660,11 +4660,11 @@ static inline void mas_wr_prealloc_setup(struct ma_wr_state *wr_mas)
 		if (unlikely(mas_is_none(mas)))
 			goto reset;
 
-		// mas->index went beyond ULONG_MAX during a previous operation — the state is out of bounds. Reset.
+		// mas->index went beyond the upper limit during a previous operation — the state is out of bounds. Reset.
 		if (unlikely(mas_is_overflow(mas)))
 			goto reset;
 
-		// mas->index went below 0 during a previous operation — the state is out of bounds in the other direction. Reset.
+		// mas->index went below the lower limit during a previous operation — the state is out of bounds in the other direction. Reset.
 		if (unlikely(mas_is_underflow(mas)))
 			goto reset;
 	}
@@ -4925,6 +4925,7 @@ static inline enum store_type mas_wr_store_type(struct ma_wr_state *wr_mas)
  */
 static inline void mas_wr_preallocate(struct ma_wr_state *wr_mas, void *entry)
 {
+	// Extract the ma_state from ma_wr_state
 	struct ma_state *mas = wr_mas->mas;
 
 	// A setup function for the write that manipulates the ma_state and content
@@ -4955,6 +4956,7 @@ static inline void mas_wr_preallocate(struct ma_wr_state *wr_mas, void *entry)
  */
 static inline void *mas_insert(struct ma_state *mas, void *entry)
 {
+	// Sets up ma_wr_state to track the write operation
 	MA_WR_STATE(wr_mas, mas, entry);
 
 	/*
@@ -4971,10 +4973,16 @@ static inline void *mas_insert(struct ma_state *mas, void *entry)
 	 * is when inserting at the end of a node (appending).  When done
 	 * carefully, appending can reuse the node in place.
 	 */
+
+	// wr_mas.content -> Stores the entry that is to be over written
 	wr_mas.content = mas_start(mas);
+	// The return is non-NULL in the instance of a single entry tree that stores an entry in the root pointer(ie index 0)
+	// making it occupied hence no data can be written
 	if (wr_mas.content)
+		// Jumps to the label exists
 		goto exists;
 
+	
 	mas_wr_preallocate(&wr_mas, entry);
 	if (mas_is_err(mas))
 		return NULL;
@@ -4996,7 +5004,9 @@ static inline void *mas_insert(struct ma_state *mas, void *entry)
 	return wr_mas.content;
 
 exists:
+	// Sets the mas->node to a negative error number and mas->state into ma_error
 	mas_set_err(mas, -EEXIST);
+	// Return the stored entry
 	return wr_mas.content;
 
 }
