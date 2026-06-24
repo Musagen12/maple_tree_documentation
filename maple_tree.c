@@ -4637,7 +4637,7 @@ static inline void mas_wr_store_entry(struct ma_wr_state *wr_mas)
 	return;
 }
 
-// The function harmonizes mas->state into either "ma_start" or "ma_active"
+// The function 
 // Then "wr_mas->content = mas_start(mas)" basically takes in the mas, If its "ma_active" set "content" as NULL
 // Else (ie if its "ma_start") mas_start() checks if its a tree with nodes(status becomes "ma_active", return NULL),
 // if the tree is empty(status becomes "ma_none", return NULL) and if the tree is a single entry tree(status becomes "ma_root", return the entry)
@@ -4646,9 +4646,9 @@ static inline void mas_wr_prealloc_setup(struct ma_wr_state *wr_mas)
 	// Extract the ma_state from ma_wr_state
 	struct ma_state *mas = wr_mas->mas;
 
-	// If mas is not actively positioned at a valid node from a previous traversal
+	// If mas isn't ready to continue with the operation(ie if not mas->status == ma_active)
 	if (!mas_is_active(mas)) {
-		// A fresh MA_STATE that hasn't started traversal yet — this is valid for a write
+		// A fresh MA_STATE that hasn't started traversal yet
 		if (mas_is_start(mas))
 			goto set_content;
 
