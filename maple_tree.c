@@ -7087,6 +7087,8 @@ EXPORT_SYMBOL(mtree_store);
  * Return: 0 on success, -EEXISTS if the range is occupied, -EINVAL on invalid
  * request, -ENOMEM if memory could not be allocated.
  */
+
+// Stores an entry only if the range is empty(ie NULL)  otherwise return -EEXIST
 int mtree_insert_range(struct maple_tree *mt, unsigned long first,
 		unsigned long last, void *entry, gfp_t gfp)
 {
@@ -7137,6 +7139,9 @@ EXPORT_SYMBOL(mtree_insert_range);
  * Return: 0 on success, -EEXISTS if the range is occupied, -EINVAL on invalid
  * request, -ENOMEM if memory could not be allocated.
  */
+
+// Stores an entry only if the range is empty(ie NULL) otherwise return -EEXIST
+// mtree_insert() is just a wrapper on-top of mtree_insert_range() for indexes not ranges
 int mtree_insert(struct maple_tree *mt, unsigned long index, void *entry,
 		 gfp_t gfp)
 {
